@@ -1,0 +1,50 @@
+                                                           The SAS System                      16:16 Wednesday, January 28, 2015   1
+
+                  Obs                         txt_name                         file                    period
+
+                   1     ls: ../data/fannie/*.txt: No such file or director    *                       *         
+                                                           The SAS System                      16:16 Wednesday, January 28, 2015   2
+
+                      Obs                        gz_name                        gz_file
+
+                       1     ../data_source/fannie/Acquisition_2013Q1.txt.gz    Acquisition_2013Q1.txt.gz     
+                       2     ../data_source/fannie/Acquisition_2013Q2.txt.gz    Acquisition_2013Q2.txt.gz     
+                       3     ../data_source/fannie/Acquisition_2013Q3.txt.gz    Acquisition_2013Q3.txt.gz     
+                       4     ../data_source/fannie/Acquisition_2013Q4.txt.gz    Acquisition_2013Q4.txt.gz     
+                       5     ../data_source/fannie/Performance_2013Q1.txt.gz    Performance_2013Q1.txt.gz     
+                       6     ../data_source/fannie/Performance_2013Q2.txt.gz    Performance_2013Q2.txt.gz     
+                       7     ../data_source/fannie/Performance_2013Q3.txt.gz    Performance_2013Q3.txt.gz     
+                       8     ../data_source/fannie/Performance_2013Q4.txt.gz    Performance_2013Q4.txt.gz     
+
+                      Obs    file                    txtfile                      txt_name    period
+
+                       1     Acquisition_2013Q1      Acquisition_2013Q1.txt                             
+                       2     Acquisition_2013Q2      Acquisition_2013Q2.txt                             
+                       3     Acquisition_2013Q3      Acquisition_2013Q3.txt                             
+                       4     Acquisition_2013Q4      Acquisition_2013Q4.txt                             
+                       5     Performance_2013Q1      Performance_2013Q1.txt                             
+                       6     Performance_2013Q2      Performance_2013Q2.txt                             
+                       7     Performance_2013Q3      Performance_2013Q3.txt                             
+                       8     Performance_2013Q4      Performance_2013Q4.txt                             
+                                                           The SAS System                      16:16 Wednesday, January 28, 2015   3
+
+                                                                                                       file_
+            Obs    txt_file                              txt_name                   file_period        year     file_qt
+
+             1     Acquisition_2013Q1      ../data/fannie/Acquisition_2013Q1.txt    2013Q1             2013       1    
+             2     Acquisition_2013Q2      ../data/fannie/Acquisition_2013Q2.txt    2013Q2             2013       2    
+             3     Acquisition_2013Q3      ../data/fannie/Acquisition_2013Q3.txt    2013Q3             2013       3    
+             4     Acquisition_2013Q4      ../data/fannie/Acquisition_2013Q4.txt    2013Q4             2013       4    
+                                                           The SAS System                      16:16 Wednesday, January 28, 2015   4
+
+                                                                                                       file_
+            Obs    txt_file                              txt_name                   file_period        year     file_qt
+
+             1     Acquisition_2013Q1      ../data/fannie/Acquisition_2013Q1.txt    2013Q1             2013       1    
+             2     Performance_2013Q1      ../data/fannie/Performance_2013Q1.txt    2013Q1             2013       1    
+             3     Acquisition_2013Q2      ../data/fannie/Acquisition_2013Q2.txt    2013Q2             2013       2    
+             4     Performance_2013Q2      ../data/fannie/Performance_2013Q2.txt    2013Q2             2013       2    
+             5     Acquisition_2013Q3      ../data/fannie/Acquisition_2013Q3.txt    2013Q3             2013       3    
+             6     Performance_2013Q3      ../data/fannie/Performance_2013Q3.txt    2013Q3             2013       3    
+             7     Acquisition_2013Q4      ../data/fannie/Acquisition_2013Q4.txt    2013Q4             2013       4    
+             8     Performance_2013Q4      ../data/fannie/Performance_2013Q4.txt    2013Q4             2013       4    

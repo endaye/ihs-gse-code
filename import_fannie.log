@@ -1,0 +1,1896 @@
+1                                                          The SAS System                          16:16 Wednesday, January 28, 2015
+
+NOTE: Copyright (c) 2002-2008 by SAS Institute Inc., Cary, NC, USA. 
+NOTE: SAS (r) Proprietary Software 9.2 (TS2M3) 
+      Licensed to DEPAUL UNIVERSITY-T&R, Site 70072056.
+NOTE: This session is executing on the Linux 2.6.18-371.9.1.el5 (LIN X64) platform.
+
+
+
+You are running SAS 9. Some SAS 8 files will be automatically converted 
+by the V9 engine; others are incompatible.  Please see 
+http://support.sas.com/rnd/migration/planning/platform/64bit.html
+
+PROC MIGRATE will preserve current SAS file attributes and is 
+recommended for converting all your SAS libraries from any 
+SAS 8 release to SAS 9.  For details and examples, please see
+http://support.sas.com/rnd/migration/index.html
+
+
+This message is contained in the SAS news file, and is presented upon
+initialization.  Edit the file "news" in the "misc/base" directory to
+display site-specific news and information in the program log.
+The command line option "-nonews" will prevent this display.
+
+
+
+
+NOTE: SAS initialization used:
+      real time           0.06 seconds
+      cpu time            0.01 seconds
+      
+1          option compress=yes;
+2          options mprint;
+3          
+4          libname folder "./";
+NOTE: Libref FOLDER was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /home/yzhang96/GSE/sas_code
+4        !                     
+5          libname source "../data_source/fannie/";
+NOTE: Libref SOURCE was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /home/yzhang96/GSE/data_source/fannie
+5        !                                         
+6          libname txtds "../data/fannie/";
+NOTE: Libref TXTDS was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /home/yzhang96/GSE/data/fannie
+6        !                                 
+7          libname sasds "../sas_dataset/";
+NOTE: Libref SASDS was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /home/yzhang96/GSE/sas_dataset
+7        !                                 
+8          libname result "../sas_dataset_final";
+NOTE: Libref RESULT was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /home/yzhang96/GSE/sas_dataset_final
+8        !                                       
+9          
+2                                                          The SAS System                          16:16 Wednesday, January 28, 2015
+
+10         %let source = ../data_source/fannie/;
+11         %let txtds = ../data/fannie/;
+12         %let startyr = 2000;
+13         *%let endyr = 2013;
+14         %macro unzip_file();
+15         filename gzs pipe "ls &source.*.gz";
+16         data gz_list;
+17           infile gzs truncover;
+18           input gz_name $50.;
+19           format gz_file $30. file $20. txtfile $25.;
+20           gz_file = scan(gz_name,-1,'/');
+21           file = scan(gz_file,1,'.');
+22           txtfile = cats(file,'.txt');
+23         run;
+24         proc sort; by file; run;
+25         
+26         filename txts pipe "ls &txtds.*.txt";
+27         data txt_list1;
+28           infile txts truncover;
+29           input txt_name $50.;
+30           format file $20. period $10.;
+31           file = scan(scan(txt_name,-1,'/'),1,'.');
+32           period = scan(file,-1,'_');
+33         run;
+34         proc sort; by file; run;
+35         proc print; run;
+36         
+37         data new_gz;
+38           merge gz_list(in=a) txt_list1(in=b);
+39           by file;
+40           if a=1 and b=0;
+41         run;
+42         proc print; run;
+43         
+44         data _NULL_;
+45           set new_gz;
+46           call system("gunzip -c -d &source."||strip(gz_file)||" >  &txtds."||strip(txtfile));
+47         run;
+48         %mend unzip_file;
+49         
+50         
+51         %macro import(file);
+52         %if %index(&file.,Acquisition) ^= 0 %then %do; %put ~~~~~acq;
+53           data &file.;        
+54             infile "&txtds.&file..txt" dlm= '|' MISSOVER DSD lrecl=32767 firstobs=1 ;
+55             input id_loan : $22. channel : $22. seller_name : $82. Int_rt : 16. orig_upb : 13. orig_loan_term : 8.
+56             Orig_date : $10. dt_first_pi : $10. ltv : 16. cltv : 16. cnt_borr : 5. dti: 16. fico : 8. flag_fthb : $12.
+57             loan_purpose : $22. prop_type : $12. cnt_units : 12. occpy_sts : $22. st : $22. zipcode : $12. 
+58             mi_pct : 16.  prod_type : $22.  ;
+59             label id_loan = "loan indentifier"
+60               	  seller_name = "seller name"
+61               	  Int_rt = "original interest rate"
+62         	  	  orig_upb = "original unpaid principal balance"
+63         	  	  orig_loan_term = "original loan term"
+64         	  	  orig_date = "origination date"
+65         	  	  dt_first_pi = "first payment date"
+66         	  	  ltv = "original loan-to-value"
+67         	  	  cltv = "original combined loan-to-value"
+3                                                          The SAS System                          16:16 Wednesday, January 28, 2015
+
+68         	  	  cnt_borr = "number of borrowers"
+69         	  	  dti = "original dect-to-income-ratio"
+70         	 	  fico = "credit score"
+71         	 	  flag_fthb = "first-time home buyer indicator"
+72         		  loan_purpose = "loan purpose"
+73         		  prop_type = "property type"
+74         		  cnt_units = "number of units"
+75         		  occpy_sts = "occupancy state"
+76         		  st = "property state"
+77         		  zipcode = "zip"
+78         		  mi_pct = "mortgage insurance percentage"
+79         		  prod_type = "product type";
+80         
+81           run;
+82         %end;
+83         %else %do;%put ~~~~perf;
+84           data &file.;
+85         	infile "&txtds.&file..txt" dlm= '|' MISSOVER DSD lrecl=32767 firstobs=1 ;
+86         	input ID_loan : $20. Period : mmddyy10. servicer_name : $80. new_Int_rt : 14. Act_endg_upb : 11.  loan_age : 10. 
+87         	mths_remng : 3. adj_mths_remng: 3. dt_matr : $8. msa : $5. delq_sts : $5. flag_mod : $2. CD_Zero_BAL : $3.
+88         	Dt_zero_BAL : $8.  ;
+89         	label id_loan = "loan indentifier"
+90             	  period = "monthly reporting period"
+91         		  servicer_name = "servicer name"
+92         		  new_int_rt = "current interest rate"
+93         		  act_endg_upb = "current actual unpaid principal balance"
+94         		  loan_age = "loan age"
+95         		  mths_remng = "remaining months to legal maturity"
+96         		  adj_mths_remng = "adjusted remaining months to legal maturity"
+97         		  dt_matr = "maturity date"
+98         		  msa = "metropolitan statistical area"
+99         		  delq_sts = "current loan delinquency status"
+100        		  flag_mod = "modification flag"
+101        		  cd_zero_bal = "zero balance code"
+102        		  dt_zero_bal = "zerop balance effective date";
+103        
+104          run;
+105        %end;
+106        %mend import;
+107        
+108        
+109        
+110        
+111        %macro combine(period);
+112        %put ~~~~acquisition&period.~~~~performance&period.;
+113        
+114          data id_loan_ac;
+115            set acquisition_&period.;
+116            *if st = 'IL' and zipcode = 606;
+117          run;
+118          proc sort; by id_loan; run;
+119        
+120        
+121          data id_loan_pf;
+122            set performance_&period.;
+123            keep id_loan Current_Int_rt dt_matr msa servicer_name period delq_sts mths_remng CD_Zero_BAL Dt_zero_BAL;
+124          run;
+125          proc sort; by id_loan; run;
+4                                                          The SAS System                          16:16 Wednesday, January 28, 2015
+
+126        
+127          data loan;
+128            merge id_loan_ac(in=a) id_loan_pf;
+129            by id_loan;
+130            if a = 1;
+131          run;
+132        
+133          data loan_float_p;
+134            set loan;
+135            if strip(delq_sts) ^= '0' or Dt_zero_BAL ^= .;
+136            if strip(delq_sts) = 'X' or strip(delq_sts) = 'x' then delq_sts = '10';
+137          run;
+138          
+139          data loan_zero_bal;
+140          retain CD_Zero_BAL Dt_zero_BAL;
+141            set loan_float_p(keep=id_loan CD_Zero_BAL Dt_zero_BAL rename=(CD_Zero_BAL=cd_tmp Dt_zero_BAL=dt_tmp));
+142            by id_loan;
+143           if first.id_loan then do;
+144             CD_Zero_BAL = cd_tmp;
+145             Dt_zero_BAL = dt_tmp;
+146           end;
+147           else do;
+148             if Dt_zero_BAL = '' and dt_tmp ^= '' then do; CD_Zero_BAL = cd_tmp; Dt_zero_BAL = dt_tmp; end;
+149           end;
+150           if last.id_loan;
+151           drop cd_tmp dt_tmp;
+152           label CD_Zero_BAL = 'zero balance code'
+153                 Dt_zero_BAL = 'zerop balance effective date';
+154          run; 
+155        
+156          proc sort nodupkey data=loan_float_p; by id_loan delq_sts; run;
+157        
+158          data loan_fixed_p;
+159            set loan_float_p;
+160            drop period delq_sts mths_remng CD_Zero_BAL Dt_zero_BAL;
+161          run;
+162          proc sort nodupkey; by id_loan; run;
+163          
+164          proc transpose data=loan_float_p(keep=id_loan delq_sts period) out=dt_delq prefix =dt_delq_;
+165            by id_loan;
+166            id delq_sts;
+167            var period;
+168          run;
+169        
+170          proc transpose data=loan_float_p(keep=id_loan delq_sts mths_remng) out=mths_remng_delq prefix =mths_remng_delq_;
+171            by id_loan;
+172            id delq_sts;
+173            var mths_remng;
+174          run;
+175        
+176          data float;
+177            merge dt_delq mths_remng_delq;
+178            by id_loan;
+179            format dt_delq_1 - dt_delq_6 mmddyy10.
+180                   dt_delq_10 mmddyy10.;
+181            rename dt_delq_10 = dt_delq_x
+182                   mths_remng_delq_10 = mths_remng_delq_x;
+183            attrib _ALL_ label = '';
+5                                                          The SAS System                          16:16 Wednesday, January 28, 2015
+
+184            drop _NAME_ _LABEL_;
+185          run;
+186        
+187        
+188          data fannie_all_&period.;
+189            merge loan_fixed_p loan_zero_bal float;
+190            by id_loan;
+191          run; 
+192        
+193        
+194        %mend combine;
+195        
+196        %macro import_txt();
+197        filename txt pipe "ls &txtds.*.txt";
+198        data txt_list;
+199          infile txt truncover;
+200          input txt_name $50.;
+201          format  file_period $15. file_year $5. file_qt $2.;
+202          txt_file = scan(scan(txt_name,-1,'/'),1,'.');
+203          file_period = scan(txt_file,-1,'_');
+204          file_year = substr(file_period,1,4);
+205          file_qt = substr(file_period,6,1);
+206        run;
+207        
+208        proc sort; by txt_file file_year file_qt; run;
+209        
+210        data new_f;
+211          merge new_gz(keep=file rename=(file=txt_file) in=a) txt_list;
+212          by txt_file;
+213          if a=1;
+214        run;
+215        proc sort out=txt_period nodupkey; by file_period; run;
+216        proc print; run;
+217        data _NULL_;
+218          set txt_period;
+219          call symputx('all_p',_N_);
+220          call symput(cats('t',_N_),file_period);
+221        run;
+222        
+223        proc sort data=new_f; by file_year file_qt; run;
+224        proc print; run;
+225        data _NULL_;
+226          set new_f;
+227          %let maxobs = 0;
+228          call symputx('maxobs',_N_);
+229          call symput(cats('f',_N_),txt_file);
+230          call symput(cats('year',_N_),file_year);
+231          call symput(cats('qt',_N_),file_qt);
+232        run;
+233        
+234        %if %eval(&maxobs.) ^= 0 %then %do;
+235        %do i=1 %to &maxobs.;
+236        %put ~~~~~year=&&year&i.~~~~qt=&&qt&i.~~~file=&&f&i.;
+237          %import(&&f&i.);
+238          
+239          %if %index(&&f&i.,Acquisition) ^= 0 %then %do;%put ~~~~acq~~again;
+240            %if %eval(&&qt&i.) = 1 %then %do;%put ~~~first~acq;
+241        	  data sasds.fannie_Acquisition&&year&i.;
+6                                                          The SAS System                          16:16 Wednesday, January 28, 2015
+
+242        	    set &&f&i.;
+243        	  run;
+244        	%end;
+245        	%else %do;
+246        	  data sasds.fannie_Acquisition&&year&i.;
+247        	    set sasds.fannie_Acquisition&&year&i. &&f&i.;
+248        	  run;
+249        	%end;
+250          %end;
+251        
+252          %else %do;
+253            %if %eval(&&qt&i.) = 1 %then %do;
+254        	  data sasds.fannie_Performance&&year&i.;
+255        	    set &&f&i.;
+256        	  run;
+257        	%end;
+258        	%else %do;
+259        	  data sasds.fannie_Performance&&year&i.;
+260        	    set sasds.fannie_Performance&&year&i. &&f&i.;
+261        	  run;
+262        	%end;
+263          %end;
+264        
+265        %end;
+266        %end;
+267        %do j=1 %to &all_p.;
+268          %put ~~~~~&&t&j.;
+269          %combine(&&t&j.);
+270          %if %index(&&t&j.,&startyr.Q1) ^= 0  %then %do; %put ~~~&&t&j.~~~new;
+271             data result.fannie_all ;
+272              set fannie_all_&&t&j.;
+273              rename current_int_rt = new_int_rt;
+274            run;
+275          %end;
+276          %else %do;%put ~~~&&t&j.~~~update;
+277            data result.fannie_all ;
+278              set result.fannie_all fannie_all_&&t&j.;
+279              rename current_int_rt = new_int_rt;
+280            run;
+281          %end;
+282        %end;
+283        
+284        data result.fannie_606;
+285          set result.fannie_all;
+286          if st = 'IL' and zipcode = 606;
+287        run;
+288          	
+289        
+290        
+291        %mend import_txt;
+292        
+293        %unzip_file;
+MPRINT(UNZIP_FILE):   filename gzs pipe "ls ../data_source/fannie/*.gz";
+MPRINT(UNZIP_FILE):   data gz_list;
+MPRINT(UNZIP_FILE):   infile gzs truncover;
+MPRINT(UNZIP_FILE):   input gz_name $50.;
+MPRINT(UNZIP_FILE):   format gz_file $30. file $20. txtfile $25.;
+MPRINT(UNZIP_FILE):   gz_file = scan(gz_name,-1,'/');
+7                                                          The SAS System                          16:16 Wednesday, January 28, 2015
+
+MPRINT(UNZIP_FILE):   file = scan(gz_file,1,'.');
+MPRINT(UNZIP_FILE):   txtfile = cats(file,'.txt');
+MPRINT(UNZIP_FILE):   run;
+
+NOTE: The infile GZS is:
+      Pipe command="ls ../data_source/fannie/*.gz"
+
+NOTE: 8 records were read from the infile GZS.
+      The minimum record length was 47.
+      The maximum record length was 47.
+NOTE: The data set WORK.GZ_LIST has 8 observations and 4 variables.
+NOTE: Compressing data set WORK.GZ_LIST increased size by 100.00 percent. 
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(UNZIP_FILE):   proc sort;
+MPRINT(UNZIP_FILE):   by file;
+MPRINT(UNZIP_FILE):   run;
+
+NOTE: There were 8 observations read from the data set WORK.GZ_LIST.
+NOTE: The data set WORK.GZ_LIST has 8 observations and 4 variables.
+NOTE: Compressing data set WORK.GZ_LIST increased size by 100.00 percent. 
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(UNZIP_FILE):   filename txts pipe "ls ../data/fannie/*.txt";
+MPRINT(UNZIP_FILE):   data txt_list1;
+MPRINT(UNZIP_FILE):   infile txts truncover;
+MPRINT(UNZIP_FILE):   input txt_name $50.;
+MPRINT(UNZIP_FILE):   format file $20. period $10.;
+MPRINT(UNZIP_FILE):   file = scan(scan(txt_name,-1,'/'),1,'.');
+MPRINT(UNZIP_FILE):   period = scan(file,-1,'_');
+MPRINT(UNZIP_FILE):   run;
+
+NOTE: The infile TXTS is:
+      Pipe command="ls ../data/fannie/*.txt"
+
+NOTE: 1 record was read from the infile TXTS.
+      The minimum record length was 51.
+      The maximum record length was 51.
+NOTE: The data set WORK.TXT_LIST1 has 1 observations and 3 variables.
+NOTE: Compressing data set WORK.TXT_LIST1 increased size by 100.00 percent. 
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(UNZIP_FILE):   proc sort;
+MPRINT(UNZIP_FILE):   by file;
+MPRINT(UNZIP_FILE):   run;
+
+8                                                          The SAS System                          16:16 Wednesday, January 28, 2015
+
+NOTE: There were 1 observations read from the data set WORK.TXT_LIST1.
+NOTE: The data set WORK.TXT_LIST1 has 1 observations and 3 variables.
+NOTE: Compressing data set WORK.TXT_LIST1 increased size by 100.00 percent. 
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(UNZIP_FILE):   proc print;
+MPRINT(UNZIP_FILE):   run;
+
+NOTE: There were 1 observations read from the data set WORK.TXT_LIST1.
+NOTE: The PROCEDURE PRINT printed page 1.
+NOTE: PROCEDURE PRINT used (Total process time):
+      real time           0.06 seconds
+      cpu time            0.01 seconds
+      
+
+MPRINT(UNZIP_FILE):   data new_gz;
+MPRINT(UNZIP_FILE):   merge gz_list(in=a) txt_list1(in=b);
+MPRINT(UNZIP_FILE):   by file;
+MPRINT(UNZIP_FILE):   if a=1 and b=0;
+MPRINT(UNZIP_FILE):   run;
+
+NOTE: There were 8 observations read from the data set WORK.GZ_LIST.
+NOTE: There were 1 observations read from the data set WORK.TXT_LIST1.
+NOTE: The data set WORK.NEW_GZ has 8 observations and 6 variables.
+NOTE: Compressing data set WORK.NEW_GZ increased size by 100.00 percent. 
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(UNZIP_FILE):   proc print;
+MPRINT(UNZIP_FILE):   run;
+
+NOTE: There were 8 observations read from the data set WORK.NEW_GZ.
+NOTE: The PROCEDURE PRINT printed page 2.
+NOTE: PROCEDURE PRINT used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.01 seconds
+      
+
+MPRINT(UNZIP_FILE):   data _NULL_;
+MPRINT(UNZIP_FILE):   set new_gz;
+MPRINT(UNZIP_FILE):   call system("gunzip -c -d ../data_source/fannie/"||strip(gz_file)||" >  ../data/fannie/"||strip(txtfile));
+MPRINT(UNZIP_FILE):   run;
+
+NOTE: There were 8 observations read from the data set WORK.NEW_GZ.
+NOTE: DATA statement used (Total process time):
+      real time           20.15 seconds
+      cpu time            0.00 seconds
+      
+
+294        %import_txt;
+MPRINT(IMPORT_TXT):   filename txt pipe "ls ../data/fannie/*.txt";
+9                                                          The SAS System                          16:16 Wednesday, January 28, 2015
+
+MPRINT(IMPORT_TXT):   data txt_list;
+MPRINT(IMPORT_TXT):   infile txt truncover;
+MPRINT(IMPORT_TXT):   input txt_name $50.;
+MPRINT(IMPORT_TXT):   format file_period $15. file_year $5. file_qt $2.;
+MPRINT(IMPORT_TXT):   txt_file = scan(scan(txt_name,-1,'/'),1,'.');
+MPRINT(IMPORT_TXT):   file_period = scan(txt_file,-1,'_');
+MPRINT(IMPORT_TXT):   file_year = substr(file_period,1,4);
+MPRINT(IMPORT_TXT):   file_qt = substr(file_period,6,1);
+MPRINT(IMPORT_TXT):   run;
+
+NOTE: The infile TXT is:
+      Pipe command="ls ../data/fannie/*.txt"
+
+NOTE: 8 records were read from the infile TXT.
+      The minimum record length was 37.
+      The maximum record length was 37.
+NOTE: The data set WORK.TXT_LIST has 8 observations and 5 variables.
+NOTE: Compressing data set WORK.TXT_LIST increased size by 100.00 percent. 
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(IMPORT_TXT):   proc sort;
+MPRINT(IMPORT_TXT):   by txt_file file_year file_qt;
+MPRINT(IMPORT_TXT):   run;
+
+NOTE: There were 8 observations read from the data set WORK.TXT_LIST.
+NOTE: The data set WORK.TXT_LIST has 8 observations and 5 variables.
+NOTE: Compressing data set WORK.TXT_LIST increased size by 100.00 percent. 
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(IMPORT_TXT):   data new_f;
+MPRINT(IMPORT_TXT):   merge new_gz(keep=file rename=(file=txt_file) in=a) txt_list;
+MPRINT(IMPORT_TXT):   by txt_file;
+MPRINT(IMPORT_TXT):   if a=1;
+MPRINT(IMPORT_TXT):   run;
+
+WARNING: Multiple lengths were specified for the BY variable txt_file by input data sets. This may cause unexpected results.
+NOTE: There were 8 observations read from the data set WORK.NEW_GZ.
+NOTE: There were 8 observations read from the data set WORK.TXT_LIST.
+NOTE: The data set WORK.NEW_F has 8 observations and 5 variables.
+NOTE: Compressing data set WORK.NEW_F increased size by 100.00 percent. 
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(IMPORT_TXT):   proc sort out=txt_period nodupkey;
+MPRINT(IMPORT_TXT):   by file_period;
+MPRINT(IMPORT_TXT):   run;
+
+10                                                         The SAS System                          16:16 Wednesday, January 28, 2015
+
+NOTE: There were 8 observations read from the data set WORK.NEW_F.
+NOTE: 4 observations with duplicate key values were deleted.
+NOTE: The data set WORK.TXT_PERIOD has 4 observations and 5 variables.
+NOTE: Compressing data set WORK.TXT_PERIOD increased size by 100.00 percent. 
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(IMPORT_TXT):   proc print;
+MPRINT(IMPORT_TXT):   run;
+
+NOTE: There were 4 observations read from the data set WORK.TXT_PERIOD.
+NOTE: The PROCEDURE PRINT printed page 3.
+NOTE: PROCEDURE PRINT used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(IMPORT_TXT):   data _NULL_;
+MPRINT(IMPORT_TXT):   set txt_period;
+MPRINT(IMPORT_TXT):   call symputx('all_p',_N_);
+MPRINT(IMPORT_TXT):   call symput(cats('t',_N_),file_period);
+MPRINT(IMPORT_TXT):   run;
+
+NOTE: There were 4 observations read from the data set WORK.TXT_PERIOD.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(IMPORT_TXT):   proc sort data=new_f;
+MPRINT(IMPORT_TXT):   by file_year file_qt;
+MPRINT(IMPORT_TXT):   run;
+
+NOTE: There were 8 observations read from the data set WORK.NEW_F.
+NOTE: The data set WORK.NEW_F has 8 observations and 5 variables.
+NOTE: Compressing data set WORK.NEW_F increased size by 100.00 percent. 
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(IMPORT_TXT):   proc print;
+MPRINT(IMPORT_TXT):   run;
+
+NOTE: There were 8 observations read from the data set WORK.NEW_F.
+NOTE: The PROCEDURE PRINT printed page 4.
+NOTE: PROCEDURE PRINT used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.01 seconds
+      
+
+MPRINT(IMPORT_TXT):   data _NULL_;
+MPRINT(IMPORT_TXT):   set new_f;
+MPRINT(IMPORT_TXT):   call symputx('maxobs',_N_);
+11                                                         The SAS System                          16:16 Wednesday, January 28, 2015
+
+MPRINT(IMPORT_TXT):   call symput(cats('f',_N_),txt_file);
+MPRINT(IMPORT_TXT):   call symput(cats('year',_N_),file_year);
+MPRINT(IMPORT_TXT):   call symput(cats('qt',_N_),file_qt);
+MPRINT(IMPORT_TXT):   run;
+
+NOTE: There were 8 observations read from the data set WORK.NEW_F.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+~~~~~year=2013 ~~~~qt=1 ~~~file=Acquisition_2013Q1
+~~~~~acq
+MPRINT(IMPORT):   data Acquisition_2013Q1;
+MPRINT(IMPORT):   infile "../data/fannie/Acquisition_2013Q1.txt" dlm= '|' MISSOVER DSD lrecl=32767 firstobs=1 ;
+MPRINT(IMPORT):   input id_loan : $22. channel : $22. seller_name : $82. Int_rt : 16. orig_upb : 13. orig_loan_term : 8. Orig_date 
+: $10. dt_first_pi : $10. ltv : 16. cltv : 16. cnt_borr : 5. dti: 16. fico : 8. flag_fthb : $12. loan_purpose : $22. prop_type : 
+$12. cnt_units : 12. occpy_sts : $22. st : $22. zipcode : $12. mi_pct : 16. prod_type : $22. ;
+MPRINT(IMPORT):   label id_loan = "loan indentifier" seller_name = "seller name" Int_rt = "original interest rate" orig_upb = 
+"original unpaid principal balance" orig_loan_term = "original loan term" orig_date = "origination date" dt_first_pi = "first 
+payment date" ltv = "original loan-to-value" cltv = "original combined loan-to-value" cnt_borr = "number of borrowers" dti = 
+"original dect-to-income-ratio" fico = "credit score" flag_fthb = "first-time home buyer indicator" loan_purpose = "loan purpose" 
+prop_type = "property type" cnt_units = "number of units" occpy_sts = "occupancy state" st = "property state" zipcode = "zip" 
+mi_pct = "mortgage insurance percentage" prod_type = "product type";
+MPRINT(IMPORT):   run;
+
+NOTE: The infile "../data/fannie/Acquisition_2013Q1.txt" is:
+      Filename=/home/yzhang96/GSE/data/fannie/Acquisition_2013Q1.txt,
+      Owner Name=yzhang96,Group Name=domain^users,
+      Access Permission=rw-r--r--,
+      Last Modified=Wed Jan 28 16:16:25 2015,
+      File Size (bytes)=46257335
+
+NOTE: 442239 records were read from the infile "../data/fannie/Acquisition_2013Q1.txt".
+      The minimum record length was 85.
+      The maximum record length was 133.
+NOTE: The data set WORK.ACQUISITION_2013Q1 has 442239 observations and 22 variables.
+NOTE: Compressing data set WORK.ACQUISITION_2013Q1 decreased size by 56.33 percent. 
+      Compressed is 4199 pages; un-compressed would require 9615 pages.
+NOTE: DATA statement used (Total process time):
+      real time           2.24 seconds
+      cpu time            2.22 seconds
+      
+
+MPRINT(IMPORT_TXT):  ;
+~~~~acq~~again
+~~~first~acq
+MPRINT(IMPORT_TXT):   data sasds.fannie_Acquisition2013 ;
+MPRINT(IMPORT_TXT):   set Acquisition_2013Q1 ;
+MPRINT(IMPORT_TXT):   run;
+
+NOTE: There were 442239 observations read from the data set WORK.ACQUISITION_2013Q1.
+NOTE: The data set SASDS.FANNIE_ACQUISITION2013 has 442239 observations and 22 variables.
+NOTE: Compressing data set SASDS.FANNIE_ACQUISITION2013 decreased size by 56.33 percent. 
+      Compressed is 4199 pages; un-compressed would require 9615 pages.
+NOTE: DATA statement used (Total process time):
+      real time           3.61 seconds
+      cpu time            2.02 seconds
+12                                                         The SAS System                          16:16 Wednesday, January 28, 2015
+
+      
+
+~~~~~year=2013 ~~~~qt=1 ~~~file=Performance_2013Q1
+~~~~perf
+MPRINT(IMPORT):   data Performance_2013Q1;
+MPRINT(IMPORT):   infile "../data/fannie/Performance_2013Q1.txt" dlm= '|' MISSOVER DSD lrecl=32767 firstobs=1 ;
+MPRINT(IMPORT):   input ID_loan : $20. Period : mmddyy10. servicer_name : $80. new_Int_rt : 14. Act_endg_upb : 11. loan_age : 10. 
+mths_remng : 3. adj_mths_remng: 3. dt_matr : $8. msa : $5. delq_sts : $5. flag_mod : $2. CD_Zero_BAL : $3. Dt_zero_BAL : $8. ;
+MPRINT(IMPORT):   label id_loan = "loan indentifier" period = "monthly reporting period" servicer_name = "servicer name" new_int_rt 
+= "current interest rate" act_endg_upb = "current actual unpaid principal balance" loan_age = "loan age" mths_remng = "remaining 
+months to legal maturity" adj_mths_remng = "adjusted remaining months to legal maturity" dt_matr = "maturity date" msa = 
+"metropolitan statistical area" delq_sts = "current loan delinquency status" flag_mod = "modification flag" cd_zero_bal = "zero 
+balance code" dt_zero_bal = "zerop balance effective date";
+MPRINT(IMPORT):   run;
+
+NOTE: The infile "../data/fannie/Performance_2013Q1.txt" is:
+      Filename=/home/yzhang96/GSE/data/fannie/Performance_2013Q1.txt,
+      Owner Name=yzhang96,Group Name=domain^users,
+      Access Permission=rw-r--r--,
+      Last Modified=Wed Jan 28 16:16:32 2015,
+      File Size (bytes)=604452496
+
+NOTE: 8684948 records were read from the infile "../data/fannie/Performance_2013Q1.txt".
+      The minimum record length was 56.
+      The maximum record length was 116.
+NOTE: The data set WORK.PERFORMANCE_2013Q1 has 8684948 observations and 14 variables.
+NOTE: Compressing data set WORK.PERFORMANCE_2013Q1 decreased size by 52.35 percent. 
+      Compressed is 47026 pages; un-compressed would require 98693 pages.
+NOTE: DATA statement used (Total process time):
+      real time           24.40 seconds
+      cpu time            24.37 seconds
+      
+
+MPRINT(IMPORT_TXT):  ;
+MPRINT(IMPORT_TXT):   data sasds.fannie_Performance2013 ;
+MPRINT(IMPORT_TXT):   set Performance_2013Q1 ;
+MPRINT(IMPORT_TXT):   run;
+
+NOTE: There were 8684948 observations read from the data set WORK.PERFORMANCE_2013Q1.
+NOTE: The data set SASDS.FANNIE_PERFORMANCE2013 has 8684948 observations and 14 variables.
+NOTE: Compressing data set SASDS.FANNIE_PERFORMANCE2013 decreased size by 52.35 percent. 
+      Compressed is 47026 pages; un-compressed would require 98693 pages.
+NOTE: DATA statement used (Total process time):
+      real time           21.51 seconds
+      cpu time            16.58 seconds
+      
+
+~~~~~year=2013 ~~~~qt=2 ~~~file=Acquisition_2013Q2
+~~~~~acq
+MPRINT(IMPORT):   data Acquisition_2013Q2;
+MPRINT(IMPORT):   infile "../data/fannie/Acquisition_2013Q2.txt" dlm= '|' MISSOVER DSD lrecl=32767 firstobs=1 ;
+MPRINT(IMPORT):   input id_loan : $22. channel : $22. seller_name : $82. Int_rt : 16. orig_upb : 13. orig_loan_term : 8. Orig_date 
+: $10. dt_first_pi : $10. ltv : 16. cltv : 16. cnt_borr : 5. dti: 16. fico : 8. flag_fthb : $12. loan_purpose : $22. prop_type : 
+$12. cnt_units : 12. occpy_sts : $22. st : $22. zipcode : $12. mi_pct : 16. prod_type : $22. ;
+MPRINT(IMPORT):   label id_loan = "loan indentifier" seller_name = "seller name" Int_rt = "original interest rate" orig_upb = 
+"original unpaid principal balance" orig_loan_term = "original loan term" orig_date = "origination date" dt_first_pi = "first 
+payment date" ltv = "original loan-to-value" cltv = "original combined loan-to-value" cnt_borr = "number of borrowers" dti = 
+"original dect-to-income-ratio" fico = "credit score" flag_fthb = "first-time home buyer indicator" loan_purpose = "loan purpose" 
+13                                                         The SAS System                          16:16 Wednesday, January 28, 2015
+
+prop_type = "property type" cnt_units = "number of units" occpy_sts = "occupancy state" st = "property state" zipcode = "zip" 
+mi_pct = "mortgage insurance percentage" prod_type = "product type";
+MPRINT(IMPORT):   run;
+
+NOTE: The infile "../data/fannie/Acquisition_2013Q2.txt" is:
+      Filename=/home/yzhang96/GSE/data/fannie/Acquisition_2013Q2.txt,
+      Owner Name=yzhang96,Group Name=domain^users,
+      Access Permission=rw-r--r--,
+      Last Modified=Wed Jan 28 16:16:26 2015,
+      File Size (bytes)=46844449
+
+NOTE: 451042 records were read from the infile "../data/fannie/Acquisition_2013Q2.txt".
+      The minimum record length was 84.
+      The maximum record length was 133.
+NOTE: The data set WORK.ACQUISITION_2013Q2 has 451042 observations and 22 variables.
+NOTE: Compressing data set WORK.ACQUISITION_2013Q2 decreased size by 56.55 percent. 
+      Compressed is 4261 pages; un-compressed would require 9806 pages.
+NOTE: DATA statement used (Total process time):
+      real time           2.10 seconds
+      cpu time            2.08 seconds
+      
+
+MPRINT(IMPORT_TXT):  ;
+~~~~acq~~again
+MPRINT(IMPORT_TXT):   data sasds.fannie_Acquisition2013 ;
+MPRINT(IMPORT_TXT):   set sasds.fannie_Acquisition2013 Acquisition_2013Q2 ;
+MPRINT(IMPORT_TXT):   run;
+
+NOTE: There were 442239 observations read from the data set SASDS.FANNIE_ACQUISITION2013.
+NOTE: There were 451042 observations read from the data set WORK.ACQUISITION_2013Q2.
+NOTE: The data set SASDS.FANNIE_ACQUISITION2013 has 893281 observations and 22 variables.
+NOTE: Compressing data set SASDS.FANNIE_ACQUISITION2013 decreased size by 56.45 percent. 
+      Compressed is 8458 pages; un-compressed would require 19420 pages.
+NOTE: DATA statement used (Total process time):
+      real time           2.85 seconds
+      cpu time            2.86 seconds
+      
+
+~~~~~year=2013 ~~~~qt=2 ~~~file=Performance_2013Q2
+~~~~perf
+MPRINT(IMPORT):   data Performance_2013Q2;
+MPRINT(IMPORT):   infile "../data/fannie/Performance_2013Q2.txt" dlm= '|' MISSOVER DSD lrecl=32767 firstobs=1 ;
+MPRINT(IMPORT):   input ID_loan : $20. Period : mmddyy10. servicer_name : $80. new_Int_rt : 14. Act_endg_upb : 11. loan_age : 10. 
+mths_remng : 3. adj_mths_remng: 3. dt_matr : $8. msa : $5. delq_sts : $5. flag_mod : $2. CD_Zero_BAL : $3. Dt_zero_BAL : $8. ;
+MPRINT(IMPORT):   label id_loan = "loan indentifier" period = "monthly reporting period" servicer_name = "servicer name" new_int_rt 
+= "current interest rate" act_endg_upb = "current actual unpaid principal balance" loan_age = "loan age" mths_remng = "remaining 
+months to legal maturity" adj_mths_remng = "adjusted remaining months to legal maturity" dt_matr = "maturity date" msa = 
+"metropolitan statistical area" delq_sts = "current loan delinquency status" flag_mod = "modification flag" cd_zero_bal = "zero 
+balance code" dt_zero_bal = "zerop balance effective date";
+MPRINT(IMPORT):   run;
+
+NOTE: The infile "../data/fannie/Performance_2013Q2.txt" is:
+      Filename=/home/yzhang96/GSE/data/fannie/Performance_2013Q2.txt,
+      Owner Name=yzhang96,Group Name=domain^users,
+      Access Permission=rw-r--r--,
+      Last Modified=Wed Jan 28 16:16:39 2015,
+      File Size (bytes)=521764620
+
+14                                                         The SAS System                          16:16 Wednesday, January 28, 2015
+
+NOTE: 7534106 records were read from the infile "../data/fannie/Performance_2013Q2.txt".
+      The minimum record length was 56.
+      The maximum record length was 117.
+NOTE: The data set WORK.PERFORMANCE_2013Q2 has 7534106 observations and 14 variables.
+NOTE: Compressing data set WORK.PERFORMANCE_2013Q2 decreased size by 52.37 percent. 
+      Compressed is 40776 pages; un-compressed would require 85616 pages.
+NOTE: DATA statement used (Total process time):
+      real time           18.95 seconds
+      cpu time            18.93 seconds
+      
+
+MPRINT(IMPORT_TXT):  ;
+MPRINT(IMPORT_TXT):   data sasds.fannie_Performance2013 ;
+MPRINT(IMPORT_TXT):   set sasds.fannie_Performance2013 Performance_2013Q2 ;
+MPRINT(IMPORT_TXT):   run;
+
+NOTE: There were 8684948 observations read from the data set SASDS.FANNIE_PERFORMANCE2013.
+NOTE: There were 7534106 observations read from the data set WORK.PERFORMANCE_2013Q2.
+NOTE: The data set SASDS.FANNIE_PERFORMANCE2013 has 16219054 observations and 14 variables.
+NOTE: Compressing data set SASDS.FANNIE_PERFORMANCE2013 decreased size by 52.36 percent. 
+      Compressed is 87800 pages; un-compressed would require 184308 pages.
+NOTE: DATA statement used (Total process time):
+      real time           38.65 seconds
+      cpu time            29.75 seconds
+      
+
+~~~~~year=2013 ~~~~qt=3 ~~~file=Acquisition_2013Q3
+~~~~~acq
+MPRINT(IMPORT):   data Acquisition_2013Q3;
+MPRINT(IMPORT):   infile "../data/fannie/Acquisition_2013Q3.txt" dlm= '|' MISSOVER DSD lrecl=32767 firstobs=1 ;
+MPRINT(IMPORT):   input id_loan : $22. channel : $22. seller_name : $82. Int_rt : 16. orig_upb : 13. orig_loan_term : 8. Orig_date 
+: $10. dt_first_pi : $10. ltv : 16. cltv : 16. cnt_borr : 5. dti: 16. fico : 8. flag_fthb : $12. loan_purpose : $22. prop_type : 
+$12. cnt_units : 12. occpy_sts : $22. st : $22. zipcode : $12. mi_pct : 16. prod_type : $22. ;
+MPRINT(IMPORT):   label id_loan = "loan indentifier" seller_name = "seller name" Int_rt = "original interest rate" orig_upb = 
+"original unpaid principal balance" orig_loan_term = "original loan term" orig_date = "origination date" dt_first_pi = "first 
+payment date" ltv = "original loan-to-value" cltv = "original combined loan-to-value" cnt_borr = "number of borrowers" dti = 
+"original dect-to-income-ratio" fico = "credit score" flag_fthb = "first-time home buyer indicator" loan_purpose = "loan purpose" 
+prop_type = "property type" cnt_units = "number of units" occpy_sts = "occupancy state" st = "property state" zipcode = "zip" 
+mi_pct = "mortgage insurance percentage" prod_type = "product type";
+MPRINT(IMPORT):   run;
+
+NOTE: The infile "../data/fannie/Acquisition_2013Q3.txt" is:
+      Filename=/home/yzhang96/GSE/data/fannie/Acquisition_2013Q3.txt,
+      Owner Name=yzhang96,Group Name=domain^users,
+      Access Permission=rw-r--r--,
+      Last Modified=Wed Jan 28 16:16:27 2015,
+      File Size (bytes)=44990678
+
+NOTE: 432315 records were read from the infile "../data/fannie/Acquisition_2013Q3.txt".
+      The minimum record length was 85.
+      The maximum record length was 133.
+NOTE: The data set WORK.ACQUISITION_2013Q3 has 432315 observations and 22 variables.
+NOTE: Compressing data set WORK.ACQUISITION_2013Q3 decreased size by 56.43 percent. 
+      Compressed is 4095 pages; un-compressed would require 9399 pages.
+NOTE: DATA statement used (Total process time):
+      real time           2.04 seconds
+      cpu time            2.02 seconds
+      
+15                                                         The SAS System                          16:16 Wednesday, January 28, 2015
+
+
+MPRINT(IMPORT_TXT):  ;
+~~~~acq~~again
+MPRINT(IMPORT_TXT):   data sasds.fannie_Acquisition2013 ;
+MPRINT(IMPORT_TXT):   set sasds.fannie_Acquisition2013 Acquisition_2013Q3 ;
+MPRINT(IMPORT_TXT):   run;
+
+NOTE: There were 893281 observations read from the data set SASDS.FANNIE_ACQUISITION2013.
+NOTE: There were 432315 observations read from the data set WORK.ACQUISITION_2013Q3.
+NOTE: The data set SASDS.FANNIE_ACQUISITION2013 has 1325596 observations and 22 variables.
+NOTE: Compressing data set SASDS.FANNIE_ACQUISITION2013 decreased size by 56.45 percent. 
+      Compressed is 12550 pages; un-compressed would require 28818 pages.
+NOTE: DATA statement used (Total process time):
+      real time           5.63 seconds
+      cpu time            4.64 seconds
+      
+
+~~~~~year=2013 ~~~~qt=3 ~~~file=Performance_2013Q3
+~~~~perf
+MPRINT(IMPORT):   data Performance_2013Q3;
+MPRINT(IMPORT):   infile "../data/fannie/Performance_2013Q3.txt" dlm= '|' MISSOVER DSD lrecl=32767 firstobs=1 ;
+MPRINT(IMPORT):   input ID_loan : $20. Period : mmddyy10. servicer_name : $80. new_Int_rt : 14. Act_endg_upb : 11. loan_age : 10. 
+mths_remng : 3. adj_mths_remng: 3. dt_matr : $8. msa : $5. delq_sts : $5. flag_mod : $2. CD_Zero_BAL : $3. Dt_zero_BAL : $8. ;
+MPRINT(IMPORT):   label id_loan = "loan indentifier" period = "monthly reporting period" servicer_name = "servicer name" new_int_rt 
+= "current interest rate" act_endg_upb = "current actual unpaid principal balance" loan_age = "loan age" mths_remng = "remaining 
+months to legal maturity" adj_mths_remng = "adjusted remaining months to legal maturity" dt_matr = "maturity date" msa = 
+"metropolitan statistical area" delq_sts = "current loan delinquency status" flag_mod = "modification flag" cd_zero_bal = "zero 
+balance code" dt_zero_bal = "zerop balance effective date";
+MPRINT(IMPORT):   run;
+
+NOTE: The infile "../data/fannie/Performance_2013Q3.txt" is:
+      Filename=/home/yzhang96/GSE/data/fannie/Performance_2013Q3.txt,
+      Owner Name=yzhang96,Group Name=domain^users,
+      Access Permission=rw-r--r--,
+      Last Modified=Wed Jan 28 16:16:43 2015,
+      File Size (bytes)=409941994
+
+NOTE: 5982041 records were read from the infile "../data/fannie/Performance_2013Q3.txt".
+      The minimum record length was 56.
+      The maximum record length was 115.
+NOTE: The data set WORK.PERFORMANCE_2013Q3 has 5982041 observations and 14 variables.
+NOTE: Compressing data set WORK.PERFORMANCE_2013Q3 decreased size by 52.36 percent. 
+      Compressed is 32384 pages; un-compressed would require 67978 pages.
+NOTE: DATA statement used (Total process time):
+      real time           15.13 seconds
+      cpu time            15.10 seconds
+      
+
+MPRINT(IMPORT_TXT):  ;
+MPRINT(IMPORT_TXT):   data sasds.fannie_Performance2013 ;
+MPRINT(IMPORT_TXT):   set sasds.fannie_Performance2013 Performance_2013Q3 ;
+MPRINT(IMPORT_TXT):   run;
+
+NOTE: There were 16219054 observations read from the data set SASDS.FANNIE_PERFORMANCE2013.
+NOTE: There were 5982041 observations read from the data set WORK.PERFORMANCE_2013Q3.
+NOTE: The data set SASDS.FANNIE_PERFORMANCE2013 has 22201095 observations and 14 variables.
+NOTE: Compressing data set SASDS.FANNIE_PERFORMANCE2013 decreased size by 52.36 percent. 
+      Compressed is 120182 pages; un-compressed would require 252286 pages.
+16                                                         The SAS System                          16:16 Wednesday, January 28, 2015
+
+NOTE: DATA statement used (Total process time):
+      real time           55.15 seconds
+      cpu time            42.71 seconds
+      
+
+~~~~~year=2013 ~~~~qt=4 ~~~file=Acquisition_2013Q4
+~~~~~acq
+MPRINT(IMPORT):   data Acquisition_2013Q4;
+MPRINT(IMPORT):   infile "../data/fannie/Acquisition_2013Q4.txt" dlm= '|' MISSOVER DSD lrecl=32767 firstobs=1 ;
+MPRINT(IMPORT):   input id_loan : $22. channel : $22. seller_name : $82. Int_rt : 16. orig_upb : 13. orig_loan_term : 8. Orig_date 
+: $10. dt_first_pi : $10. ltv : 16. cltv : 16. cnt_borr : 5. dti: 16. fico : 8. flag_fthb : $12. loan_purpose : $22. prop_type : 
+$12. cnt_units : 12. occpy_sts : $22. st : $22. zipcode : $12. mi_pct : 16. prod_type : $22. ;
+MPRINT(IMPORT):   label id_loan = "loan indentifier" seller_name = "seller name" Int_rt = "original interest rate" orig_upb = 
+"original unpaid principal balance" orig_loan_term = "original loan term" orig_date = "origination date" dt_first_pi = "first 
+payment date" ltv = "original loan-to-value" cltv = "original combined loan-to-value" cnt_borr = "number of borrowers" dti = 
+"original dect-to-income-ratio" fico = "credit score" flag_fthb = "first-time home buyer indicator" loan_purpose = "loan purpose" 
+prop_type = "property type" cnt_units = "number of units" occpy_sts = "occupancy state" st = "property state" zipcode = "zip" 
+mi_pct = "mortgage insurance percentage" prod_type = "product type";
+MPRINT(IMPORT):   run;
+
+NOTE: The infile "../data/fannie/Acquisition_2013Q4.txt" is:
+      Filename=/home/yzhang96/GSE/data/fannie/Acquisition_2013Q4.txt,
+      Owner Name=yzhang96,Group Name=domain^users,
+      Access Permission=rw-r--r--,
+      Last Modified=Wed Jan 28 16:16:27 2015,
+      File Size (bytes)=32019930
+
+NOTE: 309107 records were read from the infile "../data/fannie/Acquisition_2013Q4.txt".
+      The minimum record length was 84.
+      The maximum record length was 133.
+NOTE: The data set WORK.ACQUISITION_2013Q4 has 309107 observations and 22 variables.
+NOTE: Compressing data set WORK.ACQUISITION_2013Q4 decreased size by 56.52 percent. 
+      Compressed is 2922 pages; un-compressed would require 6721 pages.
+NOTE: DATA statement used (Total process time):
+      real time           1.29 seconds
+      cpu time            1.27 seconds
+      
+
+MPRINT(IMPORT_TXT):  ;
+~~~~acq~~again
+MPRINT(IMPORT_TXT):   data sasds.fannie_Acquisition2013 ;
+MPRINT(IMPORT_TXT):   set sasds.fannie_Acquisition2013 Acquisition_2013Q4 ;
+MPRINT(IMPORT_TXT):   run;
+
+NOTE: There were 1325596 observations read from the data set SASDS.FANNIE_ACQUISITION2013.
+NOTE: There were 309107 observations read from the data set WORK.ACQUISITION_2013Q4.
+NOTE: The data set SASDS.FANNIE_ACQUISITION2013 has 1634703 observations and 22 variables.
+NOTE: Compressing data set SASDS.FANNIE_ACQUISITION2013 decreased size by 56.47 percent. 
+      Compressed is 15470 pages; un-compressed would require 35538 pages.
+NOTE: DATA statement used (Total process time):
+      real time           7.01 seconds
+      cpu time            6.16 seconds
+      
+
+~~~~~year=2013 ~~~~qt=4 ~~~file=Performance_2013Q4
+~~~~perf
+MPRINT(IMPORT):   data Performance_2013Q4;
+MPRINT(IMPORT):   infile "../data/fannie/Performance_2013Q4.txt" dlm= '|' MISSOVER DSD lrecl=32767 firstobs=1 ;
+17                                                         The SAS System                          16:16 Wednesday, January 28, 2015
+
+MPRINT(IMPORT):   input ID_loan : $20. Period : mmddyy10. servicer_name : $80. new_Int_rt : 14. Act_endg_upb : 11. loan_age : 10. 
+mths_remng : 3. adj_mths_remng: 3. dt_matr : $8. msa : $5. delq_sts : $5. flag_mod : $2. CD_Zero_BAL : $3. Dt_zero_BAL : $8. ;
+MPRINT(IMPORT):   label id_loan = "loan indentifier" period = "monthly reporting period" servicer_name = "servicer name" new_int_rt 
+= "current interest rate" act_endg_upb = "current actual unpaid principal balance" loan_age = "loan age" mths_remng = "remaining 
+months to legal maturity" adj_mths_remng = "adjusted remaining months to legal maturity" dt_matr = "maturity date" msa = 
+"metropolitan statistical area" delq_sts = "current loan delinquency status" flag_mod = "modification flag" cd_zero_bal = "zero 
+balance code" dt_zero_bal = "zerop balance effective date";
+MPRINT(IMPORT):   run;
+
+NOTE: The infile "../data/fannie/Performance_2013Q4.txt" is:
+      Filename=/home/yzhang96/GSE/data/fannie/Performance_2013Q4.txt,
+      Owner Name=yzhang96,Group Name=domain^users,
+      Access Permission=rw-r--r--,
+      Last Modified=Wed Jan 28 16:16:45 2015,
+      File Size (bytes)=227978806
+
+NOTE: 3377484 records were read from the infile "../data/fannie/Performance_2013Q4.txt".
+      The minimum record length was 56.
+      The maximum record length was 112.
+NOTE: The data set WORK.PERFORMANCE_2013Q4 has 3377484 observations and 14 variables.
+NOTE: Compressing data set WORK.PERFORMANCE_2013Q4 decreased size by 52.39 percent. 
+      Compressed is 18272 pages; un-compressed would require 38381 pages.
+NOTE: DATA statement used (Total process time):
+      real time           9.03 seconds
+      cpu time            9.01 seconds
+      
+
+MPRINT(IMPORT_TXT):  ;
+MPRINT(IMPORT_TXT):   data sasds.fannie_Performance2013 ;
+MPRINT(IMPORT_TXT):   set sasds.fannie_Performance2013 Performance_2013Q4 ;
+MPRINT(IMPORT_TXT):   run;
+
+NOTE: There were 22201095 observations read from the data set SASDS.FANNIE_PERFORMANCE2013.
+NOTE: There were 3377484 observations read from the data set WORK.PERFORMANCE_2013Q4.
+NOTE: The data set SASDS.FANNIE_PERFORMANCE2013 has 25578579 observations and 14 variables.
+NOTE: Compressing data set SASDS.FANNIE_PERFORMANCE2013 decreased size by 52.37 percent. 
+      Compressed is 138451 pages; un-compressed would require 290666 pages.
+NOTE: DATA statement used (Total process time):
+      real time           1:02.50
+      cpu time            48.89 seconds
+      
+
+~~~~~2013Q1
+~~~~acquisition2013Q1~~~~performance2013Q1
+MPRINT(COMBINE):   data id_loan_ac;
+MPRINT(COMBINE):   set acquisition_2013Q1;
+MPRINT(COMBINE):   *if st = 'IL' and zipcode = 606;
+MPRINT(COMBINE):   run;
+
+NOTE: There were 442239 observations read from the data set WORK.ACQUISITION_2013Q1.
+NOTE: The data set WORK.ID_LOAN_AC has 442239 observations and 22 variables.
+NOTE: Compressing data set WORK.ID_LOAN_AC decreased size by 56.33 percent. 
+      Compressed is 4199 pages; un-compressed would require 9615 pages.
+NOTE: DATA statement used (Total process time):
+      real time           1.53 seconds
+      cpu time            1.53 seconds
+      
+
+18                                                         The SAS System                          16:16 Wednesday, January 28, 2015
+
+MPRINT(COMBINE):   proc sort;
+MPRINT(COMBINE):   by id_loan;
+MPRINT(COMBINE):   run;
+
+NOTE: There were 442239 observations read from the data set WORK.ID_LOAN_AC.
+NOTE: The data set WORK.ID_LOAN_AC has 442239 observations and 22 variables.
+NOTE: Compressing data set WORK.ID_LOAN_AC decreased size by 56.33 percent. 
+      Compressed is 4199 pages; un-compressed would require 9615 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           1.51 seconds
+      cpu time            1.70 seconds
+      
+
+MPRINT(COMBINE):   data id_loan_pf;
+MPRINT(COMBINE):   set performance_2013Q1;
+MPRINT(COMBINE):   keep id_loan Current_Int_rt dt_matr msa servicer_name period delq_sts mths_remng CD_Zero_BAL Dt_zero_BAL;
+MPRINT(COMBINE):   run;
+
+WARNING: The variable Current_Int_rt in the DROP, KEEP, or RENAME list has never been referenced.
+NOTE: There were 8684948 observations read from the data set WORK.PERFORMANCE_2013Q1.
+NOTE: The data set WORK.ID_LOAN_PF has 8684948 observations and 9 variables.
+NOTE: Compressing data set WORK.ID_LOAN_PF decreased size by 57.29 percent. 
+      Compressed is 69986 pages; un-compressed would require 163868 pages.
+NOTE: DATA statement used (Total process time):
+      real time           11.54 seconds
+      cpu time            11.54 seconds
+      
+
+MPRINT(COMBINE):   proc sort;
+MPRINT(COMBINE):   by id_loan;
+MPRINT(COMBINE):   run;
+
+NOTE: There were 8684948 observations read from the data set WORK.ID_LOAN_PF.
+NOTE: The data set WORK.ID_LOAN_PF has 8684948 observations and 9 variables.
+NOTE: Compressing data set WORK.ID_LOAN_PF decreased size by 57.29 percent. 
+      Compressed is 69986 pages; un-compressed would require 163868 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           9.77 seconds
+      cpu time            12.57 seconds
+      
+
+MPRINT(COMBINE):   data loan;
+MPRINT(COMBINE):   merge id_loan_ac(in=a) id_loan_pf;
+MPRINT(COMBINE):   by id_loan;
+MPRINT(COMBINE):   if a = 1;
+MPRINT(COMBINE):   run;
+
+NOTE: There were 442239 observations read from the data set WORK.ID_LOAN_AC.
+NOTE: There were 8684948 observations read from the data set WORK.ID_LOAN_PF.
+NOTE: The data set WORK.LOAN has 8684948 observations and 30 variables.
+NOTE: Compressing data set WORK.LOAN decreased size by 62.14 percent. 
+      Compressed is 64472 pages; un-compressed would require 170294 pages.
+NOTE: DATA statement used (Total process time):
+      real time           24.99 seconds
+      cpu time            24.99 seconds
+      
+
+MPRINT(COMBINE):   data loan_float_p;
+19                                                         The SAS System                          16:16 Wednesday, January 28, 2015
+
+MPRINT(COMBINE):   set loan;
+MPRINT(COMBINE):   if strip(delq_sts) ^= '0' or Dt_zero_BAL ^= .;
+MPRINT(COMBINE):   if strip(delq_sts) = 'X' or strip(delq_sts) = 'x' then delq_sts = '10';
+MPRINT(COMBINE):   run;
+
+NOTE: Character values have been converted to numeric values at the places given by: (Line):(Column).
+      294:2   
+NOTE: There were 8684948 observations read from the data set WORK.LOAN.
+NOTE: The data set WORK.LOAN_FLOAT_P has 53363 observations and 30 variables.
+NOTE: Compressing data set WORK.LOAN_FLOAT_P decreased size by 60.65 percent. 
+      Compressed is 412 pages; un-compressed would require 1047 pages.
+NOTE: DATA statement used (Total process time):
+      real time           13.75 seconds
+      cpu time            13.75 seconds
+      
+
+MPRINT(COMBINE):   data loan_zero_bal;
+MPRINT(COMBINE):   retain CD_Zero_BAL Dt_zero_BAL;
+MPRINT(COMBINE):   set loan_float_p(keep=id_loan CD_Zero_BAL Dt_zero_BAL rename=(CD_Zero_BAL=cd_tmp Dt_zero_BAL=dt_tmp));
+MPRINT(COMBINE):   by id_loan;
+MPRINT(COMBINE):   if first.id_loan then do;
+MPRINT(COMBINE):   CD_Zero_BAL = cd_tmp;
+MPRINT(COMBINE):   Dt_zero_BAL = dt_tmp;
+MPRINT(COMBINE):   end;
+MPRINT(COMBINE):   else do;
+MPRINT(COMBINE):   if Dt_zero_BAL = '' and dt_tmp ^= '' then do;
+MPRINT(COMBINE):   CD_Zero_BAL = cd_tmp;
+MPRINT(COMBINE):   Dt_zero_BAL = dt_tmp;
+MPRINT(COMBINE):   end;
+MPRINT(COMBINE):   end;
+MPRINT(COMBINE):   if last.id_loan;
+MPRINT(COMBINE):   drop cd_tmp dt_tmp;
+MPRINT(COMBINE):   label CD_Zero_BAL = 'zero balance code' Dt_zero_BAL = 'zerop balance effective date';
+MPRINT(COMBINE):   run;
+
+NOTE: There were 53363 observations read from the data set WORK.LOAN_FLOAT_P.
+NOTE: The data set WORK.LOAN_ZERO_BAL has 40425 observations and 3 variables.
+NOTE: Compressing data set WORK.LOAN_ZERO_BAL increased size by 39.39 percent. 
+      Compressed is 230 pages; un-compressed would require 165 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.10 seconds
+      cpu time            0.11 seconds
+      
+
+MPRINT(COMBINE):   proc sort nodupkey data=loan_float_p;
+MPRINT(COMBINE):   by id_loan delq_sts;
+MPRINT(COMBINE):   run;
+
+NOTE: There were 53363 observations read from the data set WORK.LOAN_FLOAT_P.
+NOTE: 9307 observations with duplicate key values were deleted.
+NOTE: The data set WORK.LOAN_FLOAT_P has 44056 observations and 30 variables.
+NOTE: Compressing data set WORK.LOAN_FLOAT_P decreased size by 60.35 percent. 
+      Compressed is 343 pages; un-compressed would require 865 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.19 seconds
+      cpu time            0.19 seconds
+      
+
+20                                                         The SAS System                          16:16 Wednesday, January 28, 2015
+
+MPRINT(COMBINE):   data loan_fixed_p;
+MPRINT(COMBINE):   set loan_float_p;
+MPRINT(COMBINE):   drop period delq_sts mths_remng CD_Zero_BAL Dt_zero_BAL;
+MPRINT(COMBINE):   run;
+NOTE: There were 44056 observations read from the data set WORK.LOAN_FLOAT_P.
+NOTE: The data set WORK.LOAN_FIXED_P has 44056 observations and 25 variables.
+NOTE: Compressing data set WORK.LOAN_FIXED_P decreased size by 62.67 percent. 
+      Compressed is 305 pages; un-compressed would require 817 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.15 seconds
+      cpu time            0.16 seconds
+      
+
+MPRINT(COMBINE):   proc sort nodupkey;
+MPRINT(COMBINE):   by id_loan;
+MPRINT(COMBINE):   run;
+NOTE: There were 44056 observations read from the data set WORK.LOAN_FIXED_P.
+NOTE: 3631 observations with duplicate key values were deleted.
+NOTE: The data set WORK.LOAN_FIXED_P has 40425 observations and 25 variables.
+NOTE: Compressing data set WORK.LOAN_FIXED_P decreased size by 62.48 percent. 
+      Compressed is 281 pages; un-compressed would require 749 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.15 seconds
+      cpu time            0.15 seconds
+      
+
+MPRINT(COMBINE):   proc transpose data=loan_float_p(keep=id_loan delq_sts period) out=dt_delq prefix =dt_delq_;
+MPRINT(COMBINE):   by id_loan;
+MPRINT(COMBINE):   id delq_sts;
+MPRINT(COMBINE):   var period;
+MPRINT(COMBINE):   run;
+
+NOTE: There were 44056 observations read from the data set WORK.LOAN_FLOAT_P.
+NOTE: The data set WORK.DT_DELQ has 40425 observations and 10 variables.
+NOTE: Compressing data set WORK.DT_DELQ decreased size by 16.64 percent. 
+      Compressed is 536 pages; un-compressed would require 643 pages.
+NOTE: PROCEDURE TRANSPOSE used (Total process time):
+      real time           0.36 seconds
+      cpu time            0.36 seconds
+      
+
+MPRINT(COMBINE):   proc transpose data=loan_float_p(keep=id_loan delq_sts mths_remng) out=mths_remng_delq prefix =mths_remng_delq_;
+MPRINT(COMBINE):   by id_loan;
+MPRINT(COMBINE):   id delq_sts;
+MPRINT(COMBINE):   var mths_remng;
+MPRINT(COMBINE):   run;
+
+NOTE: There were 44056 observations read from the data set WORK.LOAN_FLOAT_P.
+NOTE: The data set WORK.MTHS_REMNG_DELQ has 40425 observations and 10 variables.
+NOTE: Compressing data set WORK.MTHS_REMNG_DELQ decreased size by 7.00 percent. 
+      Compressed is 598 pages; un-compressed would require 643 pages.
+NOTE: PROCEDURE TRANSPOSE used (Total process time):
+      real time           0.42 seconds
+      cpu time            0.43 seconds
+      
+
+MPRINT(COMBINE):   data float;
+MPRINT(COMBINE):   merge dt_delq mths_remng_delq;
+21                                                         The SAS System                          16:16 Wednesday, January 28, 2015
+
+MPRINT(COMBINE):   by id_loan;
+MPRINT(COMBINE):   format dt_delq_1 - dt_delq_6 mmddyy10. dt_delq_10 mmddyy10.;
+MPRINT(COMBINE):   rename dt_delq_10 = dt_delq_x mths_remng_delq_10 = mths_remng_delq_x;
+MPRINT(COMBINE):   attrib _ALL_ label = '';
+MPRINT(COMBINE):   drop _NAME_ _LABEL_;
+MPRINT(COMBINE):   run;
+
+WARNING: Multiple lengths were specified for the variable _NAME_ by input data set(s). This may cause truncation of data.
+NOTE: There were 40425 observations read from the data set WORK.DT_DELQ.
+NOTE: There were 40425 observations read from the data set WORK.MTHS_REMNG_DELQ.
+NOTE: The data set WORK.FLOAT has 40425 observations and 15 variables.
+NOTE: Compressing data set WORK.FLOAT decreased size by 20.85 percent. 
+      Compressed is 543 pages; un-compressed would require 686 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.12 seconds
+      cpu time            0.10 seconds
+      
+
+MPRINT(COMBINE):   data fannie_all_2013Q1;
+MPRINT(COMBINE):   merge loan_fixed_p loan_zero_bal float;
+MPRINT(COMBINE):   by id_loan;
+MPRINT(COMBINE):   run;
+
+NOTE: There were 40425 observations read from the data set WORK.LOAN_FIXED_P.
+NOTE: There were 40425 observations read from the data set WORK.LOAN_ZERO_BAL.
+NOTE: There were 40425 observations read from the data set WORK.FLOAT.
+NOTE: The data set WORK.FANNIE_ALL_2013Q1 has 40425 observations and 41 variables.
+NOTE: Compressing data set WORK.FANNIE_ALL_2013Q1 decreased size by 56.62 percent. 
+      Compressed is 308 pages; un-compressed would require 710 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.33 seconds
+      cpu time            0.34 seconds
+      
+
+MPRINT(IMPORT_TXT):  ;
+~~~2013Q1         ~~~update
+MPRINT(IMPORT_TXT):   data result.fannie_all ;
+MPRINT(IMPORT_TXT):   set result.fannie_all fannie_all_2013Q1 ;
+ERROR: File RESULT.FANNIE_ALL.DATA does not exist.
+MPRINT(IMPORT_TXT):   rename current_int_rt = new_int_rt;
+MPRINT(IMPORT_TXT):   run;
+
+WARNING: The variable current_int_rt in the DROP, KEEP, or RENAME list has never been referenced.
+NOTE: The SAS System stopped processing this step because of errors.
+NOTE: SAS set option OBS=0 and will continue to check statements. This may cause NOTE: No observations in data set.
+WARNING: The data set RESULT.FANNIE_ALL may be incomplete.  When this step was stopped there were 0 observations and 41 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.00 seconds
+      
+
+~~~~~2013Q2
+~~~~acquisition2013Q2~~~~performance2013Q2
+MPRINT(COMBINE):   data id_loan_ac;
+MPRINT(COMBINE):   set acquisition_2013Q2;
+MPRINT(COMBINE):   *if st = 'IL' and zipcode = 606;
+MPRINT(COMBINE):   run;
+
+22                                                         The SAS System                          16:16 Wednesday, January 28, 2015
+
+NOTE: The data set WORK.ID_LOAN_AC has 0 observations and 22 variables.
+WARNING: Data set WORK.ID_LOAN_AC was not replaced because this step was stopped.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(COMBINE):   proc sort;
+MPRINT(COMBINE):   by id_loan;
+MPRINT(COMBINE):   run;
+
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(COMBINE):   data id_loan_pf;
+MPRINT(COMBINE):   set performance_2013Q2;
+MPRINT(COMBINE):   keep id_loan Current_Int_rt dt_matr msa servicer_name period delq_sts mths_remng CD_Zero_BAL Dt_zero_BAL;
+MPRINT(COMBINE):   run;
+
+WARNING: The variable Current_Int_rt in the DROP, KEEP, or RENAME list has never been referenced.
+NOTE: The data set WORK.ID_LOAN_PF has 0 observations and 9 variables.
+WARNING: Data set WORK.ID_LOAN_PF was not replaced because this step was stopped.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(COMBINE):   proc sort;
+MPRINT(COMBINE):   by id_loan;
+MPRINT(COMBINE):   run;
+
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(COMBINE):   data loan;
+MPRINT(COMBINE):   merge id_loan_ac(in=a) id_loan_pf;
+MPRINT(COMBINE):   by id_loan;
+MPRINT(COMBINE):   if a = 1;
+MPRINT(COMBINE):   run;
+
+NOTE: The data set WORK.LOAN has 0 observations and 30 variables.
+WARNING: Data set WORK.LOAN was not replaced because this step was stopped.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(COMBINE):   data loan_float_p;
+MPRINT(COMBINE):   set loan;
+MPRINT(COMBINE):   if strip(delq_sts) ^= '0' or Dt_zero_BAL ^= .;
+MPRINT(COMBINE):   if strip(delq_sts) = 'X' or strip(delq_sts) = 'x' then delq_sts = '10';
+MPRINT(COMBINE):   run;
+
+NOTE: Character values have been converted to numeric values at the places given by: (Line):(Column).
+23                                                         The SAS System                          16:16 Wednesday, January 28, 2015
+
+      294:2   
+NOTE: The data set WORK.LOAN_FLOAT_P has 0 observations and 30 variables.
+WARNING: Data set WORK.LOAN_FLOAT_P was not replaced because this step was stopped.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(COMBINE):   data loan_zero_bal;
+MPRINT(COMBINE):   retain CD_Zero_BAL Dt_zero_BAL;
+MPRINT(COMBINE):   set loan_float_p(keep=id_loan CD_Zero_BAL Dt_zero_BAL rename=(CD_Zero_BAL=cd_tmp Dt_zero_BAL=dt_tmp));
+MPRINT(COMBINE):   by id_loan;
+MPRINT(COMBINE):   if first.id_loan then do;
+MPRINT(COMBINE):   CD_Zero_BAL = cd_tmp;
+MPRINT(COMBINE):   Dt_zero_BAL = dt_tmp;
+MPRINT(COMBINE):   end;
+MPRINT(COMBINE):   else do;
+MPRINT(COMBINE):   if Dt_zero_BAL = '' and dt_tmp ^= '' then do;
+MPRINT(COMBINE):   CD_Zero_BAL = cd_tmp;
+MPRINT(COMBINE):   Dt_zero_BAL = dt_tmp;
+MPRINT(COMBINE):   end;
+MPRINT(COMBINE):   end;
+MPRINT(COMBINE):   if last.id_loan;
+MPRINT(COMBINE):   drop cd_tmp dt_tmp;
+MPRINT(COMBINE):   label CD_Zero_BAL = 'zero balance code' Dt_zero_BAL = 'zerop balance effective date';
+MPRINT(COMBINE):   run;
+
+NOTE: The data set WORK.LOAN_ZERO_BAL has 0 observations and 3 variables.
+WARNING: Data set WORK.LOAN_ZERO_BAL was not replaced because this step was stopped.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(COMBINE):   proc sort nodupkey data=loan_float_p;
+MPRINT(COMBINE):   by id_loan delq_sts;
+MPRINT(COMBINE):   run;
+
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(COMBINE):   data loan_fixed_p;
+MPRINT(COMBINE):   set loan_float_p;
+MPRINT(COMBINE):   drop period delq_sts mths_remng CD_Zero_BAL Dt_zero_BAL;
+MPRINT(COMBINE):   run;
+NOTE: The data set WORK.LOAN_FIXED_P has 0 observations and 25 variables.
+WARNING: Data set WORK.LOAN_FIXED_P was not replaced because this step was stopped.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(COMBINE):   proc sort nodupkey;
+MPRINT(COMBINE):   by id_loan;
+MPRINT(COMBINE):   run;
+NOTE: PROCEDURE SORT used (Total process time):
+24                                                         The SAS System                          16:16 Wednesday, January 28, 2015
+
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(COMBINE):   proc transpose data=loan_float_p(keep=id_loan delq_sts period) out=dt_delq prefix =dt_delq_;
+MPRINT(COMBINE):   by id_loan;
+MPRINT(COMBINE):   id delq_sts;
+MPRINT(COMBINE):   var period;
+MPRINT(COMBINE):   run;
+
+NOTE: There were 0 observations read from the data set WORK.LOAN_FLOAT_P.
+NOTE: The data set WORK.DT_DELQ has 1 observations and 3 variables.
+NOTE: Compressing data set WORK.DT_DELQ increased size by 100.00 percent. 
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE TRANSPOSE used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.01 seconds
+      
+
+MPRINT(COMBINE):   proc transpose data=loan_float_p(keep=id_loan delq_sts mths_remng) out=mths_remng_delq prefix =mths_remng_delq_;
+MPRINT(COMBINE):   by id_loan;
+MPRINT(COMBINE):   id delq_sts;
+MPRINT(COMBINE):   var mths_remng;
+MPRINT(COMBINE):   run;
+
+NOTE: There were 0 observations read from the data set WORK.LOAN_FLOAT_P.
+NOTE: The data set WORK.MTHS_REMNG_DELQ has 1 observations and 3 variables.
+NOTE: Compressing data set WORK.MTHS_REMNG_DELQ increased size by 100.00 percent. 
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE TRANSPOSE used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(COMBINE):   data float;
+MPRINT(COMBINE):   merge dt_delq mths_remng_delq;
+MPRINT(COMBINE):   by id_loan;
+MPRINT(COMBINE):   format dt_delq_1 - dt_delq_6 mmddyy10. dt_delq_10 mmddyy10.;
+MPRINT(COMBINE):   rename dt_delq_10 = dt_delq_x mths_remng_delq_10 = mths_remng_delq_x;
+MPRINT(COMBINE):   attrib _ALL_ label = '';
+MPRINT(COMBINE):   drop _NAME_ _LABEL_;
+MPRINT(COMBINE):   run;
+
+WARNING: The variable mths_remng_delq_10 in the DROP, KEEP, or RENAME list has never been referenced.
+NOTE: The data set WORK.FLOAT has 0 observations and 8 variables.
+WARNING: Data set WORK.FLOAT was not replaced because this step was stopped.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(COMBINE):   data fannie_all_2013Q2;
+MPRINT(COMBINE):   merge loan_fixed_p loan_zero_bal float;
+MPRINT(COMBINE):   by id_loan;
+MPRINT(COMBINE):   run;
+
+NOTE: The data set WORK.FANNIE_ALL_2013Q2 has 0 observations and 41 variables.
+NOTE: DATA statement used (Total process time):
+25                                                         The SAS System                          16:16 Wednesday, January 28, 2015
+
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(IMPORT_TXT):  ;
+~~~2013Q2         ~~~update
+MPRINT(IMPORT_TXT):   data result.fannie_all ;
+MPRINT(IMPORT_TXT):   set result.fannie_all fannie_all_2013Q2 ;
+MPRINT(IMPORT_TXT):   rename current_int_rt = new_int_rt;
+MPRINT(IMPORT_TXT):   run;
+
+WARNING: The variable current_int_rt in the DROP, KEEP, or RENAME list has never been referenced.
+NOTE: The data set RESULT.FANNIE_ALL has 0 observations and 41 variables.
+WARNING: Data set RESULT.FANNIE_ALL was not replaced because this step was stopped.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+~~~~~2013Q3
+~~~~acquisition2013Q3~~~~performance2013Q3
+MPRINT(COMBINE):   data id_loan_ac;
+MPRINT(COMBINE):   set acquisition_2013Q3;
+MPRINT(COMBINE):   *if st = 'IL' and zipcode = 606;
+MPRINT(COMBINE):   run;
+
+NOTE: The data set WORK.ID_LOAN_AC has 0 observations and 22 variables.
+WARNING: Data set WORK.ID_LOAN_AC was not replaced because this step was stopped.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(COMBINE):   proc sort;
+MPRINT(COMBINE):   by id_loan;
+MPRINT(COMBINE):   run;
+
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(COMBINE):   data id_loan_pf;
+MPRINT(COMBINE):   set performance_2013Q3;
+MPRINT(COMBINE):   keep id_loan Current_Int_rt dt_matr msa servicer_name period delq_sts mths_remng CD_Zero_BAL Dt_zero_BAL;
+MPRINT(COMBINE):   run;
+
+WARNING: The variable Current_Int_rt in the DROP, KEEP, or RENAME list has never been referenced.
+NOTE: The data set WORK.ID_LOAN_PF has 0 observations and 9 variables.
+WARNING: Data set WORK.ID_LOAN_PF was not replaced because this step was stopped.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(COMBINE):   proc sort;
+MPRINT(COMBINE):   by id_loan;
+MPRINT(COMBINE):   run;
+26                                                         The SAS System                          16:16 Wednesday, January 28, 2015
+
+
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(COMBINE):   data loan;
+MPRINT(COMBINE):   merge id_loan_ac(in=a) id_loan_pf;
+MPRINT(COMBINE):   by id_loan;
+MPRINT(COMBINE):   if a = 1;
+MPRINT(COMBINE):   run;
+
+NOTE: The data set WORK.LOAN has 0 observations and 30 variables.
+WARNING: Data set WORK.LOAN was not replaced because this step was stopped.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(COMBINE):   data loan_float_p;
+MPRINT(COMBINE):   set loan;
+MPRINT(COMBINE):   if strip(delq_sts) ^= '0' or Dt_zero_BAL ^= .;
+MPRINT(COMBINE):   if strip(delq_sts) = 'X' or strip(delq_sts) = 'x' then delq_sts = '10';
+MPRINT(COMBINE):   run;
+
+NOTE: Character values have been converted to numeric values at the places given by: (Line):(Column).
+      294:2   
+NOTE: The data set WORK.LOAN_FLOAT_P has 0 observations and 30 variables.
+WARNING: Data set WORK.LOAN_FLOAT_P was not replaced because this step was stopped.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(COMBINE):   data loan_zero_bal;
+MPRINT(COMBINE):   retain CD_Zero_BAL Dt_zero_BAL;
+MPRINT(COMBINE):   set loan_float_p(keep=id_loan CD_Zero_BAL Dt_zero_BAL rename=(CD_Zero_BAL=cd_tmp Dt_zero_BAL=dt_tmp));
+MPRINT(COMBINE):   by id_loan;
+MPRINT(COMBINE):   if first.id_loan then do;
+MPRINT(COMBINE):   CD_Zero_BAL = cd_tmp;
+MPRINT(COMBINE):   Dt_zero_BAL = dt_tmp;
+MPRINT(COMBINE):   end;
+MPRINT(COMBINE):   else do;
+MPRINT(COMBINE):   if Dt_zero_BAL = '' and dt_tmp ^= '' then do;
+MPRINT(COMBINE):   CD_Zero_BAL = cd_tmp;
+MPRINT(COMBINE):   Dt_zero_BAL = dt_tmp;
+MPRINT(COMBINE):   end;
+MPRINT(COMBINE):   end;
+MPRINT(COMBINE):   if last.id_loan;
+MPRINT(COMBINE):   drop cd_tmp dt_tmp;
+MPRINT(COMBINE):   label CD_Zero_BAL = 'zero balance code' Dt_zero_BAL = 'zerop balance effective date';
+MPRINT(COMBINE):   run;
+
+NOTE: The data set WORK.LOAN_ZERO_BAL has 0 observations and 3 variables.
+WARNING: Data set WORK.LOAN_ZERO_BAL was not replaced because this step was stopped.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+27                                                         The SAS System                          16:16 Wednesday, January 28, 2015
+
+      
+
+MPRINT(COMBINE):   proc sort nodupkey data=loan_float_p;
+MPRINT(COMBINE):   by id_loan delq_sts;
+MPRINT(COMBINE):   run;
+
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(COMBINE):   data loan_fixed_p;
+MPRINT(COMBINE):   set loan_float_p;
+MPRINT(COMBINE):   drop period delq_sts mths_remng CD_Zero_BAL Dt_zero_BAL;
+MPRINT(COMBINE):   run;
+NOTE: The data set WORK.LOAN_FIXED_P has 0 observations and 25 variables.
+WARNING: Data set WORK.LOAN_FIXED_P was not replaced because this step was stopped.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(COMBINE):   proc sort nodupkey;
+MPRINT(COMBINE):   by id_loan;
+MPRINT(COMBINE):   run;
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(COMBINE):   proc transpose data=loan_float_p(keep=id_loan delq_sts period) out=dt_delq prefix =dt_delq_;
+MPRINT(COMBINE):   by id_loan;
+MPRINT(COMBINE):   id delq_sts;
+MPRINT(COMBINE):   var period;
+MPRINT(COMBINE):   run;
+
+NOTE: There were 0 observations read from the data set WORK.LOAN_FLOAT_P.
+NOTE: The data set WORK.DT_DELQ has 1 observations and 3 variables.
+NOTE: Compressing data set WORK.DT_DELQ increased size by 100.00 percent. 
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE TRANSPOSE used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(COMBINE):   proc transpose data=loan_float_p(keep=id_loan delq_sts mths_remng) out=mths_remng_delq prefix =mths_remng_delq_;
+MPRINT(COMBINE):   by id_loan;
+MPRINT(COMBINE):   id delq_sts;
+MPRINT(COMBINE):   var mths_remng;
+MPRINT(COMBINE):   run;
+
+NOTE: There were 0 observations read from the data set WORK.LOAN_FLOAT_P.
+NOTE: The data set WORK.MTHS_REMNG_DELQ has 1 observations and 3 variables.
+NOTE: Compressing data set WORK.MTHS_REMNG_DELQ increased size by 100.00 percent. 
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE TRANSPOSE used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.01 seconds
+28                                                         The SAS System                          16:16 Wednesday, January 28, 2015
+
+      
+
+MPRINT(COMBINE):   data float;
+MPRINT(COMBINE):   merge dt_delq mths_remng_delq;
+MPRINT(COMBINE):   by id_loan;
+MPRINT(COMBINE):   format dt_delq_1 - dt_delq_6 mmddyy10. dt_delq_10 mmddyy10.;
+MPRINT(COMBINE):   rename dt_delq_10 = dt_delq_x mths_remng_delq_10 = mths_remng_delq_x;
+MPRINT(COMBINE):   attrib _ALL_ label = '';
+MPRINT(COMBINE):   drop _NAME_ _LABEL_;
+MPRINT(COMBINE):   run;
+
+WARNING: The variable mths_remng_delq_10 in the DROP, KEEP, or RENAME list has never been referenced.
+NOTE: The data set WORK.FLOAT has 0 observations and 8 variables.
+WARNING: Data set WORK.FLOAT was not replaced because this step was stopped.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(COMBINE):   data fannie_all_2013Q3;
+MPRINT(COMBINE):   merge loan_fixed_p loan_zero_bal float;
+MPRINT(COMBINE):   by id_loan;
+MPRINT(COMBINE):   run;
+
+NOTE: The data set WORK.FANNIE_ALL_2013Q3 has 0 observations and 41 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(IMPORT_TXT):  ;
+~~~2013Q3         ~~~update
+MPRINT(IMPORT_TXT):   data result.fannie_all ;
+MPRINT(IMPORT_TXT):   set result.fannie_all fannie_all_2013Q3 ;
+MPRINT(IMPORT_TXT):   rename current_int_rt = new_int_rt;
+MPRINT(IMPORT_TXT):   run;
+
+WARNING: The variable current_int_rt in the DROP, KEEP, or RENAME list has never been referenced.
+NOTE: The data set RESULT.FANNIE_ALL has 0 observations and 41 variables.
+WARNING: Data set RESULT.FANNIE_ALL was not replaced because this step was stopped.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+~~~~~2013Q4
+~~~~acquisition2013Q4~~~~performance2013Q4
+MPRINT(COMBINE):   data id_loan_ac;
+MPRINT(COMBINE):   set acquisition_2013Q4;
+MPRINT(COMBINE):   *if st = 'IL' and zipcode = 606;
+MPRINT(COMBINE):   run;
+
+NOTE: The data set WORK.ID_LOAN_AC has 0 observations and 22 variables.
+WARNING: Data set WORK.ID_LOAN_AC was not replaced because this step was stopped.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+29                                                         The SAS System                          16:16 Wednesday, January 28, 2015
+
+
+MPRINT(COMBINE):   proc sort;
+MPRINT(COMBINE):   by id_loan;
+MPRINT(COMBINE):   run;
+
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.01 seconds
+      
+
+MPRINT(COMBINE):   data id_loan_pf;
+MPRINT(COMBINE):   set performance_2013Q4;
+MPRINT(COMBINE):   keep id_loan Current_Int_rt dt_matr msa servicer_name period delq_sts mths_remng CD_Zero_BAL Dt_zero_BAL;
+MPRINT(COMBINE):   run;
+
+WARNING: The variable Current_Int_rt in the DROP, KEEP, or RENAME list has never been referenced.
+NOTE: The data set WORK.ID_LOAN_PF has 0 observations and 9 variables.
+WARNING: Data set WORK.ID_LOAN_PF was not replaced because this step was stopped.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(COMBINE):   proc sort;
+MPRINT(COMBINE):   by id_loan;
+MPRINT(COMBINE):   run;
+
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(COMBINE):   data loan;
+MPRINT(COMBINE):   merge id_loan_ac(in=a) id_loan_pf;
+MPRINT(COMBINE):   by id_loan;
+MPRINT(COMBINE):   if a = 1;
+MPRINT(COMBINE):   run;
+
+NOTE: The data set WORK.LOAN has 0 observations and 30 variables.
+WARNING: Data set WORK.LOAN was not replaced because this step was stopped.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(COMBINE):   data loan_float_p;
+MPRINT(COMBINE):   set loan;
+MPRINT(COMBINE):   if strip(delq_sts) ^= '0' or Dt_zero_BAL ^= .;
+MPRINT(COMBINE):   if strip(delq_sts) = 'X' or strip(delq_sts) = 'x' then delq_sts = '10';
+MPRINT(COMBINE):   run;
+
+NOTE: Character values have been converted to numeric values at the places given by: (Line):(Column).
+      294:2   
+NOTE: The data set WORK.LOAN_FLOAT_P has 0 observations and 30 variables.
+WARNING: Data set WORK.LOAN_FLOAT_P was not replaced because this step was stopped.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+30                                                         The SAS System                          16:16 Wednesday, January 28, 2015
+
+      
+
+MPRINT(COMBINE):   data loan_zero_bal;
+MPRINT(COMBINE):   retain CD_Zero_BAL Dt_zero_BAL;
+MPRINT(COMBINE):   set loan_float_p(keep=id_loan CD_Zero_BAL Dt_zero_BAL rename=(CD_Zero_BAL=cd_tmp Dt_zero_BAL=dt_tmp));
+MPRINT(COMBINE):   by id_loan;
+MPRINT(COMBINE):   if first.id_loan then do;
+MPRINT(COMBINE):   CD_Zero_BAL = cd_tmp;
+MPRINT(COMBINE):   Dt_zero_BAL = dt_tmp;
+MPRINT(COMBINE):   end;
+MPRINT(COMBINE):   else do;
+MPRINT(COMBINE):   if Dt_zero_BAL = '' and dt_tmp ^= '' then do;
+MPRINT(COMBINE):   CD_Zero_BAL = cd_tmp;
+MPRINT(COMBINE):   Dt_zero_BAL = dt_tmp;
+MPRINT(COMBINE):   end;
+MPRINT(COMBINE):   end;
+MPRINT(COMBINE):   if last.id_loan;
+MPRINT(COMBINE):   drop cd_tmp dt_tmp;
+MPRINT(COMBINE):   label CD_Zero_BAL = 'zero balance code' Dt_zero_BAL = 'zerop balance effective date';
+MPRINT(COMBINE):   run;
+
+NOTE: The data set WORK.LOAN_ZERO_BAL has 0 observations and 3 variables.
+WARNING: Data set WORK.LOAN_ZERO_BAL was not replaced because this step was stopped.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(COMBINE):   proc sort nodupkey data=loan_float_p;
+MPRINT(COMBINE):   by id_loan delq_sts;
+MPRINT(COMBINE):   run;
+
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(COMBINE):   data loan_fixed_p;
+MPRINT(COMBINE):   set loan_float_p;
+MPRINT(COMBINE):   drop period delq_sts mths_remng CD_Zero_BAL Dt_zero_BAL;
+MPRINT(COMBINE):   run;
+NOTE: The data set WORK.LOAN_FIXED_P has 0 observations and 25 variables.
+WARNING: Data set WORK.LOAN_FIXED_P was not replaced because this step was stopped.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(COMBINE):   proc sort nodupkey;
+MPRINT(COMBINE):   by id_loan;
+MPRINT(COMBINE):   run;
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(COMBINE):   proc transpose data=loan_float_p(keep=id_loan delq_sts period) out=dt_delq prefix =dt_delq_;
+MPRINT(COMBINE):   by id_loan;
+31                                                         The SAS System                          16:16 Wednesday, January 28, 2015
+
+MPRINT(COMBINE):   id delq_sts;
+MPRINT(COMBINE):   var period;
+MPRINT(COMBINE):   run;
+
+NOTE: There were 0 observations read from the data set WORK.LOAN_FLOAT_P.
+NOTE: The data set WORK.DT_DELQ has 1 observations and 3 variables.
+NOTE: Compressing data set WORK.DT_DELQ increased size by 100.00 percent. 
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE TRANSPOSE used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(COMBINE):   proc transpose data=loan_float_p(keep=id_loan delq_sts mths_remng) out=mths_remng_delq prefix =mths_remng_delq_;
+MPRINT(COMBINE):   by id_loan;
+MPRINT(COMBINE):   id delq_sts;
+MPRINT(COMBINE):   var mths_remng;
+MPRINT(COMBINE):   run;
+
+NOTE: There were 0 observations read from the data set WORK.LOAN_FLOAT_P.
+NOTE: The data set WORK.MTHS_REMNG_DELQ has 1 observations and 3 variables.
+NOTE: Compressing data set WORK.MTHS_REMNG_DELQ increased size by 100.00 percent. 
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE TRANSPOSE used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(COMBINE):   data float;
+MPRINT(COMBINE):   merge dt_delq mths_remng_delq;
+MPRINT(COMBINE):   by id_loan;
+MPRINT(COMBINE):   format dt_delq_1 - dt_delq_6 mmddyy10. dt_delq_10 mmddyy10.;
+MPRINT(COMBINE):   rename dt_delq_10 = dt_delq_x mths_remng_delq_10 = mths_remng_delq_x;
+MPRINT(COMBINE):   attrib _ALL_ label = '';
+MPRINT(COMBINE):   drop _NAME_ _LABEL_;
+MPRINT(COMBINE):   run;
+
+WARNING: The variable mths_remng_delq_10 in the DROP, KEEP, or RENAME list has never been referenced.
+NOTE: The data set WORK.FLOAT has 0 observations and 8 variables.
+WARNING: Data set WORK.FLOAT was not replaced because this step was stopped.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(COMBINE):   data fannie_all_2013Q4;
+MPRINT(COMBINE):   merge loan_fixed_p loan_zero_bal float;
+MPRINT(COMBINE):   by id_loan;
+MPRINT(COMBINE):   run;
+
+NOTE: The data set WORK.FANNIE_ALL_2013Q4 has 0 observations and 41 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(IMPORT_TXT):  ;
+~~~2013Q4         ~~~update
+32                                                         The SAS System                          16:16 Wednesday, January 28, 2015
+
+MPRINT(IMPORT_TXT):   data result.fannie_all ;
+MPRINT(IMPORT_TXT):   set result.fannie_all fannie_all_2013Q4 ;
+MPRINT(IMPORT_TXT):   rename current_int_rt = new_int_rt;
+MPRINT(IMPORT_TXT):   run;
+
+WARNING: The variable current_int_rt in the DROP, KEEP, or RENAME list has never been referenced.
+NOTE: The data set RESULT.FANNIE_ALL has 0 observations and 41 variables.
+WARNING: Data set RESULT.FANNIE_ALL was not replaced because this step was stopped.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+MPRINT(IMPORT_TXT):   data result.fannie_606;
+MPRINT(IMPORT_TXT):   set result.fannie_all;
+MPRINT(IMPORT_TXT):   if st = 'IL' and zipcode = 606;
+MPRINT(IMPORT_TXT):   run;
+
+NOTE: Character values have been converted to numeric values at the places given by: (Line):(Column).
+      294:75   
+NOTE: The data set RESULT.FANNIE_606 has 0 observations and 41 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+
+ERROR: Errors printed on page 21.
+
+NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414
+NOTE: The SAS System used:
+      real time           5:57.99
+      cpu time            4:56.62
+      

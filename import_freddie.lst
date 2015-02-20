@@ -1,0 +1,41 @@
+                                                           The SAS System                       17:10 Monday, September 15, 2014   1
+
+Obs                       zip_name                       zip_file                        file                            period
+
+ 1   ../data_source/freddie/historical_data1_Q12013.zip  historical_data1_Q12013.zip     historical_data1_Q12013         Q12013    
+ 2   ../data_source/freddie/historical_data1_Q22013.zip  historical_data1_Q22013.zip     historical_data1_Q22013         Q22013    
+                                                           The SAS System                       17:10 Monday, September 15, 2014   2
+
+                    Obs                         txt_name                         file
+
+                     1     ls: ../data/freddie/*.txt: No such file or directo    *                             
+                                                           The SAS System                       17:10 Monday, September 15, 2014   3
+
+                           z                           z                                                                           t
+                           i                           i                                                                           x
+                           p                           p                                                               p           t
+                           _                           _                                                               e           _
+                           n                           f                               f                               r           n
+O                          a                           i                               i                               i           a
+b                          m                           l                               l                               o           m
+s                          e                           e                               e                               d           e
+
+1  ../data_source/freddie/historical_data1_Q12013.zip  historical_data1_Q12013.zip     historical_data1_Q12013         Q12013       
+2  ../data_source/freddie/historical_data1_Q22013.zip  historical_data1_Q22013.zip     historical_data1_Q22013         Q22013       
+                                                           The SAS System                       17:10 Monday, September 15, 2014   4
+
+                     file_
+              Obs    period                            txt_name                        txt_file
+
+               1     Q12013        ../data/freddie/historical_data1_Q12013.txt         historical_data1_Q12013       
+               2     Q12013        ../data/freddie/historical_data1_time_Q12013.txt    historical_data1_time_Q12013  
+               3     Q22013        ../data/freddie/historical_data1_Q22013.txt         historical_data1_Q22013       
+               4     Q22013        ../data/freddie/historical_data1_time_Q22013.txt    historical_data1_time_Q22013  
+
+ 
+              Obs    period        year        qt     output_file
+
+               1     2013Q1        2013        1      origination_2013Q1  
+               2     2013Q1        2013        1      performance_2013Q1  
+               3     2013Q2        2013        2      origination_2013Q2  
+               4     2013Q2        2013        2      performance_2013Q2  

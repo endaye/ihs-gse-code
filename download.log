@@ -1,0 +1,252 @@
+1                                                          The SAS System                          17:04 Wednesday, February 4, 2015
+
+NOTE: Copyright (c) 2002-2008 by SAS Institute Inc., Cary, NC, USA. 
+NOTE: SAS (r) Proprietary Software 9.2 (TS2M3) 
+      Licensed to DEPAUL UNIVERSITY-T&R, Site 70072056.
+NOTE: This session is executing on the Linux 2.6.18-371.9.1.el5 (LIN X64) platform.
+
+
+
+You are running SAS 9. Some SAS 8 files will be automatically converted 
+by the V9 engine; others are incompatible.  Please see 
+http://support.sas.com/rnd/migration/planning/platform/64bit.html
+
+PROC MIGRATE will preserve current SAS file attributes and is 
+recommended for converting all your SAS libraries from any 
+SAS 8 release to SAS 9.  For details and examples, please see
+http://support.sas.com/rnd/migration/index.html
+
+
+This message is contained in the SAS news file, and is presented upon
+initialization.  Edit the file "news" in the "misc/base" directory to
+display site-specific news and information in the program log.
+The command line option "-nonews" will prevent this display.
+
+
+
+
+NOTE: SAS initialization used:
+      real time           0.03 seconds
+      cpu time            0.02 seconds
+      
+1          options compress=yes;
+2          options mprint;
+3          libname f "/home/yzhang96/GSE/sas_dataset/fannie/";
+NOTE: Libref F was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /home/yzhang96/GSE/sas_dataset/fannie
+3        !                                                    
+4          %LET AQSN_HEADER =
+5          	LOAN_ID :$20.
+6          	CHANNEL :$1.
+7          	SELLER :$80.
+8          	ORIG_RATE
+9          	ORIG_AMT
+10         	ORIG_TERM
+11         	X_ORIG_DATE :$7.
+12         	X_FIRST_PAY :$7.
+13         	OLTV
+14         	OCLTV
+15         	NUMBER_BORROWERS
+16         	DTI
+17         	BORROWER_FICO
+18         	FIRST_TIME_HB :$1.
+19         	LOAN_PURPOSE :$1.
+20         	PROP_TYPE :$2.
+21         	NUMBER_UNITS
+22         	OCCUPANCY :$1.
+23         	STATE :$2.
+24         	ZIP_3 :$5.
+25         	MI_COVERAGE_PCT
+2                                                          The SAS System                          17:04 Wednesday, February 4, 2015
+
+26         	PRODUCT_TYPE :$3.
+27         	COBORROWER_FICO
+28         	;
+29         
+30         %LET AQSN_LABEL = 
+31         	LOAN_ID	= "LOAN IDENTIFIER"
+32         	CHANNEL = "CHANNEL"
+33         	SELLER	= "SELLER NAME"
+34         	ORIG_RATE	= "ORIGINAL INTEREST RATE"
+35         	ORIG_AMT	= "ORIGINAL UNPAID PRINCIPAL BALANCE (UPB)"
+36         	ORIG_TERM	= "ORIGINAL LOAN TERM"
+37         	X_ORIG_DATE	= "ORIGINATION DATE"
+38         	X_FIRST_PAY = "FIRST PAYMENT DATE"
+39         	OLTV	= "ORIGINAL LOAN-TO-VALUE (LTV)"
+40         	OCLTV	= "ORIGINAL COMBINED LOAN-TO-VALUE (CLTV)"
+41         	NUMBER_BORROWERS	= "NUMBER OF BORROWERS"
+42         	DTI	= "DEBT-TO-INCOME RATIO"
+43         	BORROWER_FICO	= "BORROWER CREDIT SCORE"
+44         	FIRST_TIME_HB 	= "FIRST-TIME HOME BUYER INDICATOR"
+45         	LOAN_PURPOSE	= "LOAN PURPOSE"
+46         	PROP_TYPE	= "PROPERTY TYPE"
+47         	NUMBER_UNITS	= "NUMBER OF UNITS"
+48         	OCCUPANCY	= "OCCUPANCY STATUS"
+49         	STATE	= "PROPERTY STATE"
+50         	ZIP_3	= "ZIP (3-DIGIT)"
+51         	MI_COVERAGE_PCT	= "MORTGAGE INSURANCE PERCENTAGE"
+52         	PRODUCT_TYPE	= "PRODUCT TYPE"
+53         	COBORROWER_FICO = "CO BORROWER CREDIT SCORE"
+54         	;
+55         
+56         %LET PERF_HEADER =
+57         	LOAN_ID :$20.
+58         	X_ACTIVITY_PERIOD :$10.
+59         	SERVICER :$80.
+60         	CURRENT_RATE
+61         	CURRENT_UPB
+62         	LOAN_AGE
+63         	REMAINING_MONTHS
+64         	ADJ_REMAINING_MONTHS
+65         	X_MATURITY_DATE :$7.
+66         	MSA :$5.
+67         	CURRENT_DLQ_STATUS :$5.
+68         	MOD_FLAG :$1.
+69         	ZERO_BALANCE_CODE :$2.
+70         	X_ZERO_BALANCE_DATE :$7.
+71         	X_REPURCHASE_DATE :$10.
+72         	;
+73         
+74         %LET PERF_LABEL = 
+75         	LOAN_ID	= "LOAN IDENTIFIER"
+76         	X_ACTIVITY_PERIOD	= "MONTHLY REPORTING PERIOD"
+77         	SERVICER	= "SERVICER NAME"
+78         	CURRENT_RATE	= "CURRENT INTEREST RATE"
+79         	CURRENT_UPB	= "CURRENT ACTUAL UNPAID PRINCIPAL BALANCE (UPB)"
+80         	LOAN_AGE	= "LOAN AGE"
+81         	REMAINING_MONTHS	= "REMAINING MONTHS TO LEGAL MATURITY"
+82         	ADJ_REMAINING_MONTHS	= "ADJUSTED REMAINING MONTHS TO MATURITY"
+83         	X_MATURITY_DATE	= "MATURITY DATE"
+3                                                          The SAS System                          17:04 Wednesday, February 4, 2015
+
+84         	MSA	= "METROPOLITAN STATISTICAL AREA"
+85         	CURRENT_DLQ_STATUS	= "CURRENT LOAN DELINQUENCY STATUS"
+86         	MOD_FLAG	= "MODIFICATION FLAG"
+87         	ZERO_BALANCE_CODE	= "ZERO BALANCE CODE"
+88         	X_ZERO_BALANCE_DATE	= "ZERO BALANCE EFFECTIVE DATE"
+89         	X_REPURCHASE_DATE	= "REPURCHASE DATE"
+90         	;
+91         
+92         %MACRO FILE_IMPORT (QUARTER);
+93         	data f.AQSN_&QUARTER (DROP=X_ORIG_DATE X_FIRST_PAY);
+94         		infile "../data/fannie/Acquisition_&quarter..txt" delimiter = '|' MISSOVER DSD lrecl=32767;
+95         		input &AQSN_HEADER;
+96         		label &AQSN_LABEL;
+97         		format ORIG_DATE mmddyy8. FIRST_PAY_DATE mmddyy8.;
+98         		** Origination Date - Convert MM/YYYY string to SAS Date **;
+99         		ORIG_DATE = mdy(input(substr(X_ORIG_DATE,1,2),2.),1,input(substr(X_ORIG_DATE,4,4),4.));
+100        		** First Payment Date - Convert MM/YYYY string to SAS Date **;
+101        		FIRST_PAY_DATE = mdy(input(substr(X_FIRST_PAY,1,2),2.),1,input(substr(X_FIRST_PAY,4,4),4.));
+102        	run;
+103        
+104        	data f.PERF_&QUARTER (DROP=X_ACTIVITY_PERIOD X_MATURITY_DATE X_ZERO_BALANCE_DATE X_REPURCHASE_DATE);
+105        		infile "../data/fannie/Performance_&quarter..txt" delimiter = '|' MISSOVER DSD lrecl=32767;
+106        		input &PERF_HEADER;
+107        		label &PERF_LABEL;
+108        		format ACTIVITY_PERIOD mmddyy8. MATURITY_DATE mmddyy8. ZERO_BALANCE_DATE mmddyy8.
+109        		REPURCH_PERIOD mmddyy8.;
+110        		** Activity Period - Convert MM/DD/YYYY string to SAS Date **;
+111        		ACTIVITY_PERIOD = mdy(input(substr(X_ACTIVITY_PERIOD,1,2),2.),1,input(substr(X_ACTIVITY_PERIOD,7,4),4.));
+112        		** Maturity Date - Convert MM/YYYY string to SAS Date **;
+113        		MATURITY_DATE = mdy(input(substr(X_MATURITY_DATE,1,2),2.),1,input(substr(X_MATURITY_DATE,4,4),4.));
+114        		** Zero Balance Date - Convert MM/YYYY string to SAS Date **;
+115        		ZERO_BALANCE_DATE = mdy(input(substr(X_ZERO_BALANCE_DATE,1,2),2.),1,input(substr(X_ZERO_BALANCE_DATE,4,4),4.));
+116        		** Repurchase Date - Convert MM/DD/YYYY string to SAS Date **;
+117        		REPURCH_PERIOD = mdy(input(substr(X_REPURCHASE_DATE,1,2),2.),1,input(substr(X_REPURCHASE_DATE,7,4),4.));
+118        	run;
+119        
+120        %MEND;
+121        
+122        %FILE_IMPORT(2000Q1);
+MPRINT(FILE_IMPORT):   data f.AQSN_2000Q1 (DROP=X_ORIG_DATE X_FIRST_PAY);
+MPRINT(FILE_IMPORT):   infile "../data/fannie/Acquisition_2000Q1.txt" delimiter = '|' MISSOVER DSD lrecl=32767;
+MPRINT(FILE_IMPORT):   input LOAN_ID :$20. CHANNEL :$1. SELLER :$80. ORIG_RATE ORIG_AMT ORIG_TERM X_ORIG_DATE :$7. X_FIRST_PAY :$7. 
+OLTV OCLTV NUMBER_BORROWERS DTI BORROWER_FICO FIRST_TIME_HB :$1. LOAN_PURPOSE :$1. PROP_TYPE :$2. NUMBER_UNITS OCCUPANCY :$1. STATE 
+:$2. ZIP_3 :$5. MI_COVERAGE_PCT PRODUCT_TYPE :$3. COBORROWER_FICO;
+MPRINT(FILE_IMPORT):   label LOAN_ID = "LOAN IDENTIFIER" CHANNEL = "CHANNEL" SELLER = "SELLER NAME" ORIG_RATE = "ORIGINAL INTEREST 
+RATE" ORIG_AMT = "ORIGINAL UNPAID PRINCIPAL BALANCE (UPB)" ORIG_TERM = "ORIGINAL LOAN TERM" X_ORIG_DATE = "ORIGINATION DATE" 
+X_FIRST_PAY = "FIRST PAYMENT DATE" OLTV = "ORIGINAL LOAN-TO-VALUE (LTV)" OCLTV = "ORIGINAL COMBINED LOAN-TO-VALUE (CLTV)" 
+NUMBER_BORROWERS = "NUMBER OF BORROWERS" DTI = "DEBT-TO-INCOME RATIO" BORROWER_FICO = "BORROWER CREDIT SCORE" FIRST_TIME_HB = 
+"FIRST-TIME HOME BUYER INDICATOR" LOAN_PURPOSE = "LOAN PURPOSE" PROP_TYPE = "PROPERTY TYPE" NUMBER_UNITS = "NUMBER OF UNITS" 
+OCCUPANCY = "OCCUPANCY STATUS" STATE = "PROPERTY STATE" ZIP_3 = "ZIP (3-DIGIT)" MI_COVERAGE_PCT = "MORTGAGE INSURANCE PERCENTAGE" 
+PRODUCT_TYPE = "PRODUCT TYPE" COBORROWER_FICO = "CO BORROWER CREDIT SCORE";
+MPRINT(FILE_IMPORT):   format ORIG_DATE mmddyy8. FIRST_PAY_DATE mmddyy8.;
+MPRINT(FILE_IMPORT):   ** Origination Date - Convert MM/YYYY string to SAS Date **;
+MPRINT(FILE_IMPORT):   ORIG_DATE = mdy(input(substr(X_ORIG_DATE,1,2),2.),1,input(substr(X_ORIG_DATE,4,4),4.));
+MPRINT(FILE_IMPORT):   ** First Payment Date - Convert MM/YYYY string to SAS Date **;
+MPRINT(FILE_IMPORT):   FIRST_PAY_DATE = mdy(input(substr(X_FIRST_PAY,1,2),2.),1,input(substr(X_FIRST_PAY,4,4),4.));
+MPRINT(FILE_IMPORT):   run;
+
+4                                                          The SAS System                          17:04 Wednesday, February 4, 2015
+
+NOTE: The infile "../data/fannie/Acquisition_2000Q1.txt" is:
+      Filename=/home/yzhang96/GSE/data/fannie/Acquisition_2000Q1.txt,
+      Owner Name=yzhang96,Group Name=domain^users,
+      Access Permission=rwxr-xr-x,
+      Last Modified=Fri Jan 30 15:31:49 2015,
+      File Size (bytes)=21153870
+
+NOTE: 199641 records were read from the infile "../data/fannie/Acquisition_2000Q1.txt".
+      The minimum record length was 79.
+      The maximum record length was 131.
+NOTE: The data set F.AQSN_2000Q1 has 199641 observations and 23 variables.
+NOTE: Compressing data set F.AQSN_2000Q1 decreased size by 38.50 percent. 
+      Compressed is 1706 pages; un-compressed would require 2774 pages.
+NOTE: DATA statement used (Total process time):
+      real time           1.30 seconds
+      cpu time            1.28 seconds
+      
+
+MPRINT(FILE_IMPORT):   data f.PERF_2000Q1 (DROP=X_ACTIVITY_PERIOD X_MATURITY_DATE X_ZERO_BALANCE_DATE X_REPURCHASE_DATE);
+MPRINT(FILE_IMPORT):   infile "../data/fannie/Performance_2000Q1.txt" delimiter = '|' MISSOVER DSD lrecl=32767;
+MPRINT(FILE_IMPORT):   input LOAN_ID :$20. X_ACTIVITY_PERIOD :$10. SERVICER :$80. CURRENT_RATE CURRENT_UPB LOAN_AGE 
+REMAINING_MONTHS ADJ_REMAINING_MONTHS X_MATURITY_DATE :$7. MSA :$5. CURRENT_DLQ_STATUS :$5. MOD_FLAG :$1. ZERO_BALANCE_CODE :$2. 
+X_ZERO_BALANCE_DATE :$7. X_REPURCHASE_DATE :$10.;
+MPRINT(FILE_IMPORT):   label LOAN_ID = "LOAN IDENTIFIER" X_ACTIVITY_PERIOD = "MONTHLY REPORTING PERIOD" SERVICER = "SERVICER NAME" 
+CURRENT_RATE = "CURRENT INTEREST RATE" CURRENT_UPB = "CURRENT ACTUAL UNPAID PRINCIPAL BALANCE (UPB)" LOAN_AGE = "LOAN AGE" 
+REMAINING_MONTHS = "REMAINING MONTHS TO LEGAL MATURITY" ADJ_REMAINING_MONTHS = "ADJUSTED REMAINING MONTHS TO MATURITY" 
+X_MATURITY_DATE = "MATURITY DATE" MSA = "METROPOLITAN STATISTICAL AREA" CURRENT_DLQ_STATUS = "CURRENT LOAN DELINQUENCY STATUS" 
+MOD_FLAG = "MODIFICATION FLAG" ZERO_BALANCE_CODE = "ZERO BALANCE CODE" X_ZERO_BALANCE_DATE = "ZERO BALANCE EFFECTIVE DATE" 
+X_REPURCHASE_DATE = "REPURCHASE DATE";
+MPRINT(FILE_IMPORT):   format ACTIVITY_PERIOD mmddyy8. MATURITY_DATE mmddyy8. ZERO_BALANCE_DATE mmddyy8. REPURCH_PERIOD mmddyy8.;
+MPRINT(FILE_IMPORT):   ** Activity Period - Convert MM/DD/YYYY string to SAS Date **;
+MPRINT(FILE_IMPORT):   ACTIVITY_PERIOD = mdy(input(substr(X_ACTIVITY_PERIOD,1,2),2.),1,input(substr(X_ACTIVITY_PERIOD,7,4),4.));
+MPRINT(FILE_IMPORT):   ** Maturity Date - Convert MM/YYYY string to SAS Date **;
+MPRINT(FILE_IMPORT):   MATURITY_DATE = mdy(input(substr(X_MATURITY_DATE,1,2),2.),1,input(substr(X_MATURITY_DATE,4,4),4.));
+MPRINT(FILE_IMPORT):   ** Zero Balance Date - Convert MM/YYYY string to SAS Date **;
+MPRINT(FILE_IMPORT):   ZERO_BALANCE_DATE = 
+mdy(input(substr(X_ZERO_BALANCE_DATE,1,2),2.),1,input(substr(X_ZERO_BALANCE_DATE,4,4),4.));
+MPRINT(FILE_IMPORT):   ** Repurchase Date - Convert MM/DD/YYYY string to SAS Date **;
+MPRINT(FILE_IMPORT):   REPURCH_PERIOD = mdy(input(substr(X_REPURCHASE_DATE,1,2),2.),1,input(substr(X_REPURCHASE_DATE,7,4),4.));
+MPRINT(FILE_IMPORT):   run;
+
+NOTE: The infile "../data/fannie/Performance_2000Q1.txt" is:
+      Filename=/home/yzhang96/GSE/data/fannie/Performance_2000Q1.txt,
+      Owner Name=yzhang96,Group Name=domain^users,
+      Access Permission=rwxr-xr-x,
+      Last Modified=Fri Jan 30 15:32:30 2015,
+      File Size (bytes)=473462020
+
+NOTE: 6742078 records were read from the infile "../data/fannie/Performance_2000Q1.txt".
+      The minimum record length was 52.
+      The maximum record length was 122.
+NOTE: Missing values were generated as a result of performing an operation on missing values.
+      Each place is given by: (Number of times) at (Line):(Column).
+      1635 at 122:191      6545353 at 122:116   6741865 at 122:45    
+NOTE: The data set F.PERF_2000Q1 has 6742078 observations and 15 variables.
+NOTE: Compressing data set F.PERF_2000Q1 decreased size by 49.46 percent. 
+      Compressed is 40087 pages; un-compressed would require 79319 pages.
+NOTE: DATA statement used (Total process time):
+5                                                          The SAS System                          17:04 Wednesday, February 4, 2015
+
+      real time           26.90 seconds
+      cpu time            23.61 seconds
+      
+
+
+NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414
+NOTE: The SAS System used:
+      real time           28.24 seconds
+      cpu time            24.91 seconds
+      
