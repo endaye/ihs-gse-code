@@ -58,31 +58,32 @@ run;
 		Int_rt : 16. 
 		orig_upb : 13. 
 		orig_loan_term : 8.
-    		Orig_date : $10. 
+    Orig_date : $10. 
 		dt_first_pi : $10. 
 		ltv : 16. cltv : 16. 
 		cnt_borr : 5. 
 		dti: 16. fico : 8. 
 		flag_fthb : $12.
-    		loan_purpose : $22. 
+    loan_purpose : $22. 
 		prop_type : $12. 
 		cnt_units : 12. 
 		occpy_sts : $22. 
 		st : $22. 
 		zipcode : $12. 
-    		mi_pct : 16.  
+    mi_pct : 16.  
 		prod_type : $22.  ;
-    label 	  id_loan = "loan indentifier"
-      	  	  seller_name = "seller name"
-      	  	  Int_rt = "original interest rate"
-	  	  orig_upb = "original unpaid principal balance"
-	  	  orig_loan_term = "original loan term"
-	  	  orig_date = "origination date"
-	  	  dt_first_pi = "first payment date"
-	  	  ltv = "original loan-to-value"
-	  	  cltv = "original combined loan-to-value"
-	  	  cnt_borr = "number of borrowers"
-	  	  dti = "original dect-to-income-ratio"
+    label 	  
+      id_loan = "loan indentifier"
+      seller_name = "seller name"
+      Int_rt = "original interest rate"
+      orig_upb = "original unpaid principal balance"
+      orig_loan_term = "original loan term"
+      orig_date = "origination date"
+      dt_first_pi = "first payment date"
+      ltv = "original loan-to-value"
+      cltv = "original combined loan-to-value"
+      cnt_borr = "number of borrowers"
+      dti = "original dect-to-income-ratio"
 	 	  fico = "credit score"
 	 	  flag_fthb = "first-time home buyer indicator"
 		  loan_purpose = "loan purpose"
@@ -112,8 +113,9 @@ run;
 		flag_mod : $2. 
 		CD_Zero_BAL : $3.
 		Dt_zero_BAL : $8.  ;
-	label     id_loan = "loan indentifier"
-    	 	  period = "monthly reporting period"
+	label     
+      id_loan = "loan indentifier"
+    	 period = "monthly reporting period"
 		  servicer_name = "servicer name"
 		  new_int_rt = "current interest rate"
 		  act_endg_upb = "current actual unpaid principal balance"
