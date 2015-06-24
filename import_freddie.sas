@@ -11,7 +11,7 @@ libname result "../sas_dataset_final/";
 %let txtds = ../data/freddie/;
 %let  sasds = /home/yzhang96/GSE/sas_dataset/;
 %let startyr = 1999;
-%let endyr = 2013;
+%let endyr = 1999;
 
 
 %macro unzip_file();
